@@ -15,6 +15,7 @@ type OpenAPIGenerator struct {
 	doc       *openapi.Document
 	gvkIndex  map[string]openapi.GVK
 	overrides map[string]string
+	inVCT     bool
 }
 
 func NewOpenAPIGenerator(doc *openapi.Document) *OpenAPIGenerator {
@@ -102,6 +103,8 @@ func (g *OpenAPIGenerator) buildManifest(gvk openapi.GVK, schema map[string]any)
 		g.applyOverrides(spec, gvk.Kind)
 		g.injectTemplateLabels(spec, name)
 		g.injectTemplateRestartPolicy(spec, gvk.Kind)
+		g.fixStrategyDefaults(spec, gvk.Kind)
+		g.injectServiceSelector(spec, gvk.Kind, name)
 		manifest.set("spec", spec)
 	}
 
@@ -142,6 +145,8 @@ func (g *OpenAPIGenerator) walkSchema(schema map[string]any, kind string, depth 
 		required[r] = true
 	}
 
+	_, hasSiblingContainers := props["containers"]
+
 	result := make(map[string]any)
 	for fieldName, fieldSchema := range props {
 		fieldMap, ok := fieldSchema.(map[string]any)
@@ -151,7 +156,10 @@ func (g *OpenAPIGenerator) walkSchema(schema map[string]any, kind string, depth 
 		if isExcludedField(fieldName, depth) {
 			continue
 		}
-		if fieldName == "selector" && (kind == "Job" || kind == "CronJob") {
+		if fieldName == "selector" && (kind == "Job" || kind == "CronJob" || kind == "PersistentVolumeClaim" || g.inVCT) {
+			continue
+		}
+		if fieldName == "resources" && hasSiblingContainers {
 			continue
 		}
 
@@ -227,7 +235,14 @@ func (g *OpenAPIGenerator) generateValue(fieldName string, schema map[string]any
 		}
 		itemType := openapi.SchemaType(resolved)
 		if itemType == "object" {
+			isVCT := strings.ToLower(fieldName) == "volumeclaimtemplates"
+			if isVCT {
+				g.inVCT = true
+			}
 			elem := g.walkSchema(resolved, kind, depth+1)
+			if isVCT {
+				g.inVCT = false
+			}
 			if elem != nil {
 				return []any{elem}
 			}
@@ -254,7 +269,7 @@ func (g *OpenAPIGenerator) generateValue(fieldName string, schema map[string]any
 }
 
 func (g *OpenAPIGenerator) resourceQuantityDefaults(fieldName, kind string) map[string]any {
-	if kind == "PersistentVolumeClaim" {
+	if kind == "PersistentVolumeClaim" || g.inVCT {
 		return map[string]any{"storage": "1Gi"}
 	}
 	lower := strings.ToLower(fieldName)
@@ -360,6 +375,25 @@ func (g *OpenAPIGenerator) injectTemplateRestartPolicy(spec map[string]any, kind
 			}
 		}
 	}
+}
+
+func (g *OpenAPIGenerator) fixStrategyDefaults(spec map[string]any, kind string) {
+	if strategy, ok := spec["strategy"].(map[string]any); ok {
+		strategy["type"] = "RollingUpdate"
+	}
+	if strategy, ok := spec["updateStrategy"].(map[string]any); ok {
+		strategy["type"] = "RollingUpdate"
+	}
+}
+
+func (g *OpenAPIGenerator) injectServiceSelector(spec map[string]any, kind, name string) {
+	if kind != "Service" {
+		return
+	}
+	if _, ok := spec["selector"]; ok {
+		return
+	}
+	spec["selector"] = map[string]any{"app.kubernetes.io/name": name}
 }
 
 func (g *OpenAPIGenerator) resolveGVK(resourceType string) (openapi.GVK, bool) {
@@ -542,6 +576,9 @@ func isExcludedField(name string, depth int) bool {
 		"suspend":                    true,
 		"startingdeadlineseconds":    true,
 		"restartpolicy":              true,
+		"command":                    true,
+		"args":                       true,
+		"workingdir":                 true,
 	}
 	return excluded[lower]
 }

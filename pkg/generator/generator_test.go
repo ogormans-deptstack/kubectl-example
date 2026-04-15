@@ -141,6 +141,348 @@ func TestGenerateYAML(t *testing.T) {
 	}
 }
 
+func TestManifestQuality(t *testing.T) {
+	gen := newTestGenerator(t)
+
+	generateYAML := func(t *testing.T, kind string) string {
+		t.Helper()
+		var buf bytes.Buffer
+		if err := gen.Generate(kind, map[string]string{}, &buf); err != nil {
+			t.Fatalf("Generate(%s) failed: %v", kind, err)
+		}
+		return buf.String()
+	}
+
+	t.Run("Pod has container with image and ports but no command", func(t *testing.T) {
+		yaml := generateYAML(t, "Pod")
+		assertContains(t, yaml, "image: \"nginx:latest\"")
+		assertContains(t, yaml, "containerPort: 80")
+		assertNotContains(t, yaml, "command:")
+		assertNotContains(t, yaml, "sleep")
+	})
+
+	t.Run("Pod has container resources but no pod-level resources", func(t *testing.T) {
+		yaml := generateYAML(t, "Pod")
+		lines := strings.Split(yaml, "\n")
+		containerResourcesSeen := false
+		for i, line := range lines {
+			trimmed := strings.TrimSpace(line)
+			if trimmed == "resources:" {
+				if !containerResourcesSeen {
+					containerResourcesSeen = true
+					continue
+				}
+				t.Errorf("found second resources: block at line %d (pod-level), should only have container-level\nyaml:\n%s", i+1, yaml)
+			}
+		}
+		if !containerResourcesSeen {
+			t.Errorf("expected container-level resources block in Pod\nyaml:\n%s", yaml)
+		}
+	})
+
+	t.Run("Deployment has RollingUpdate strategy", func(t *testing.T) {
+		yaml := generateYAML(t, "Deployment")
+		assertContains(t, yaml, "type: RollingUpdate")
+		assertNotContains(t, yaml, "type: Recreate")
+	})
+
+	t.Run("Deployment has selector matching template labels", func(t *testing.T) {
+		yaml := generateYAML(t, "Deployment")
+		assertContains(t, yaml, "selector:")
+		assertContains(t, yaml, "matchLabels:")
+		assertContains(t, yaml, "app.kubernetes.io/name: example-deployment")
+	})
+
+	t.Run("Deployment template has no pod-level resources", func(t *testing.T) {
+		yaml := generateYAML(t, "Deployment")
+		lines := strings.Split(yaml, "\n")
+		inTemplateSpec := false
+		for _, line := range lines {
+			if strings.Contains(line, "spec:") && inTemplateSpec {
+				inTemplateSpec = true
+			}
+			if strings.HasPrefix(line, "    spec:") {
+				inTemplateSpec = true
+			}
+		}
+		resourceCount := strings.Count(yaml, "resources:")
+		if resourceCount > 1 {
+			t.Errorf("expected only 1 resources block (container-level), found %d\nyaml:\n%s", resourceCount, yaml)
+		}
+	})
+
+	t.Run("Service has selector and type ClusterIP", func(t *testing.T) {
+		yaml := generateYAML(t, "Service")
+		assertContains(t, yaml, "type: ClusterIP")
+		assertContains(t, yaml, "selector:")
+		assertContains(t, yaml, "app.kubernetes.io/name: example-service")
+		assertContains(t, yaml, "port: 80")
+	})
+
+	t.Run("StatefulSet has RollingUpdate and storage VCT", func(t *testing.T) {
+		yaml := generateYAML(t, "StatefulSet")
+		assertContains(t, yaml, "updateStrategy:")
+		assertContains(t, yaml, "type: RollingUpdate")
+		assertNotContains(t, yaml, "type: OnDelete")
+		assertContains(t, yaml, "volumeClaimTemplates:")
+		assertContains(t, yaml, "storage: \"1Gi\"")
+		assertContains(t, yaml, "accessModes:")
+		assertContains(t, yaml, "ReadWriteOnce")
+		assertContains(t, yaml, "serviceName:")
+	})
+
+	t.Run("StatefulSet VCT has no cpu/memory", func(t *testing.T) {
+		yaml := generateYAML(t, "StatefulSet")
+		vctIdx := strings.Index(yaml, "volumeClaimTemplates:")
+		if vctIdx < 0 {
+			t.Fatal("StatefulSet missing volumeClaimTemplates")
+		}
+		vctSection := yaml[vctIdx:]
+		if strings.Contains(vctSection, "cpu:") || strings.Contains(vctSection, "memory:") {
+			t.Errorf("VCT should have storage, not cpu/memory\nvct section:\n%s", vctSection)
+		}
+	})
+
+	t.Run("StatefulSet VCT has no selector", func(t *testing.T) {
+		yaml := generateYAML(t, "StatefulSet")
+		vctIdx := strings.Index(yaml, "volumeClaimTemplates:")
+		if vctIdx < 0 {
+			t.Fatal("StatefulSet missing volumeClaimTemplates")
+		}
+		vctSection := yaml[vctIdx:]
+		if strings.Contains(vctSection, "selector:") {
+			t.Errorf("VCT should not have selector\nvct section:\n%s", vctSection)
+		}
+	})
+
+	t.Run("DaemonSet has RollingUpdate strategy", func(t *testing.T) {
+		yaml := generateYAML(t, "DaemonSet")
+		assertContains(t, yaml, "updateStrategy:")
+		assertContains(t, yaml, "type: RollingUpdate")
+		assertNotContains(t, yaml, "type: OnDelete")
+	})
+
+	t.Run("DaemonSet template has no pod-level resources", func(t *testing.T) {
+		yaml := generateYAML(t, "DaemonSet")
+		resourceCount := strings.Count(yaml, "resources:")
+		if resourceCount > 1 {
+			t.Errorf("expected only 1 resources block (container-level), found %d\nyaml:\n%s", resourceCount, yaml)
+		}
+	})
+
+	t.Run("PVC has storage resources and no selector", func(t *testing.T) {
+		yaml := generateYAML(t, "PersistentVolumeClaim")
+		assertContains(t, yaml, "storage: \"1Gi\"")
+		assertContains(t, yaml, "accessModes:")
+		assertNotContains(t, yaml, "cpu:")
+		assertNotContains(t, yaml, "memory:")
+		assertNotContains(t, yaml, "selector:")
+	})
+
+	t.Run("Job has restartPolicy Never and template labels", func(t *testing.T) {
+		yaml := generateYAML(t, "Job")
+		assertContains(t, yaml, "restartPolicy: Never")
+		assertContains(t, yaml, "app.kubernetes.io/name: example-job")
+		assertNotContains(t, yaml, "selector:")
+	})
+
+	t.Run("CronJob has schedule and restartPolicy Never", func(t *testing.T) {
+		yaml := generateYAML(t, "CronJob")
+		assertContains(t, yaml, "schedule: \"*/5 * * * *\"")
+		assertContains(t, yaml, "restartPolicy: Never")
+		assertContains(t, yaml, "jobTemplate:")
+		assertNotContains(t, yaml, "selector:")
+	})
+
+	t.Run("Ingress has host, path, pathType Prefix", func(t *testing.T) {
+		yaml := generateYAML(t, "Ingress")
+		assertContains(t, yaml, "rules:")
+		assertContains(t, yaml, "host: example.com")
+		assertContains(t, yaml, "path: /")
+		assertContains(t, yaml, "pathType: Prefix")
+		assertContains(t, yaml, "number: 80")
+	})
+
+	t.Run("HPA has scaleTargetRef and metrics", func(t *testing.T) {
+		yaml := generateYAML(t, "HorizontalPodAutoscaler")
+		assertContains(t, yaml, "scaleTargetRef:")
+		assertContains(t, yaml, "apiVersion: apps/v1")
+		assertContains(t, yaml, "kind: Deployment")
+		assertContains(t, yaml, "maxReplicas: 10")
+		assertContains(t, yaml, "minReplicas: 1")
+		assertContains(t, yaml, "metrics:")
+		assertContains(t, yaml, "averageUtilization: 80")
+	})
+
+	t.Run("ConfigMap has data with key-value pair", func(t *testing.T) {
+		yaml := generateYAML(t, "ConfigMap")
+		assertContains(t, yaml, "data:")
+		assertContains(t, yaml, "key: value")
+	})
+
+	t.Run("Secret has data and type Opaque", func(t *testing.T) {
+		yaml := generateYAML(t, "Secret")
+		assertContains(t, yaml, "data:")
+		assertContains(t, yaml, "type: Opaque")
+		assertContains(t, yaml, "username:")
+		assertContains(t, yaml, "password:")
+	})
+
+	t.Run("NetworkPolicy has podSelector and ingress/egress", func(t *testing.T) {
+		yaml := generateYAML(t, "NetworkPolicy")
+		assertContains(t, yaml, "podSelector:")
+		assertContains(t, yaml, "ingress:")
+		assertContains(t, yaml, "egress:")
+	})
+}
+
+func TestExcludedFields(t *testing.T) {
+	gen := newTestGenerator(t)
+
+	workloadTypes := []string{"Pod", "Deployment", "Job", "CronJob", "StatefulSet", "DaemonSet"}
+
+	for _, kind := range workloadTypes {
+		t.Run(kind+" excludes internal/noise fields", func(t *testing.T) {
+			var buf bytes.Buffer
+			if err := gen.Generate(kind, map[string]string{}, &buf); err != nil {
+				t.Fatalf("Generate(%s) failed: %v", kind, err)
+			}
+			yaml := buf.String()
+
+			excluded := []string{
+				"status:",
+				"managedFields:",
+				"resourceVersion:",
+				"uid:",
+				"creationTimestamp:",
+				"selfLink:",
+				"finalizers:",
+				"ownerReferences:",
+				"initContainers:",
+				"volumes:",
+				"volumeMounts:",
+				"livenessProbe:",
+				"readinessProbe:",
+				"startupProbe:",
+				"env:",
+				"securityContext:",
+				"lifecycle:",
+				"affinity:",
+				"command:",
+			}
+			for _, field := range excluded {
+				if strings.Contains(yaml, field) {
+					t.Errorf("%s YAML should not contain %q\nyaml:\n%s", kind, field, yaml)
+				}
+			}
+		})
+	}
+
+	t.Run("PVC excludes selector", func(t *testing.T) {
+		var buf bytes.Buffer
+		if err := gen.Generate("PersistentVolumeClaim", map[string]string{}, &buf); err != nil {
+			t.Fatalf("Generate(PVC) failed: %v", err)
+		}
+		assertNotContains(t, buf.String(), "selector:")
+	})
+
+	t.Run("Pod-level resources excluded from workloads with containers", func(t *testing.T) {
+		for _, kind := range workloadTypes {
+			t.Run(kind, func(t *testing.T) {
+				var buf bytes.Buffer
+				if err := gen.Generate(kind, map[string]string{}, &buf); err != nil {
+					t.Fatalf("Generate(%s) failed: %v", kind, err)
+				}
+				yaml := buf.String()
+				assertNotContains(t, yaml, "claims:")
+			})
+		}
+	})
+}
+
+func TestOverridesExpanded(t *testing.T) {
+	gen := newTestGenerator(t)
+
+	t.Run("Service name override", func(t *testing.T) {
+		var buf bytes.Buffer
+		err := gen.Generate("Service", map[string]string{"name": "my-svc"}, &buf)
+		if err != nil {
+			t.Fatalf("Generate(Service) failed: %v", err)
+		}
+		yaml := buf.String()
+		assertContains(t, yaml, "name: my-svc")
+		assertContains(t, yaml, "app.kubernetes.io/name: my-svc")
+	})
+
+	t.Run("CronJob image override", func(t *testing.T) {
+		var buf bytes.Buffer
+		err := gen.Generate("CronJob", map[string]string{"image": "busybox:1.36"}, &buf)
+		if err != nil {
+			t.Fatalf("Generate(CronJob) failed: %v", err)
+		}
+		yaml := buf.String()
+		assertContains(t, yaml, "image: \"busybox:1.36\"")
+		assertNotContains(t, yaml, "nginx:latest")
+	})
+
+	t.Run("Ingress name override propagates to labels and backend", func(t *testing.T) {
+		var buf bytes.Buffer
+		err := gen.Generate("Ingress", map[string]string{"name": "web-ing"}, &buf)
+		if err != nil {
+			t.Fatalf("Generate(Ingress) failed: %v", err)
+		}
+		yaml := buf.String()
+		assertContains(t, yaml, "name: web-ing")
+		assertContains(t, yaml, "app.kubernetes.io/name: web-ing")
+	})
+
+	t.Run("StatefulSet replicas override", func(t *testing.T) {
+		var buf bytes.Buffer
+		err := gen.Generate("StatefulSet", map[string]string{"replicas": "5"}, &buf)
+		if err != nil {
+			t.Fatalf("Generate(StatefulSet) failed: %v", err)
+		}
+		yaml := buf.String()
+		assertContains(t, yaml, "replicas: 5")
+	})
+
+	t.Run("DaemonSet image override", func(t *testing.T) {
+		var buf bytes.Buffer
+		err := gen.Generate("DaemonSet", map[string]string{"image": "fluentd:v1.16"}, &buf)
+		if err != nil {
+			t.Fatalf("Generate(DaemonSet) failed: %v", err)
+		}
+		yaml := buf.String()
+		assertContains(t, yaml, "image: \"fluentd:v1.16\"")
+		assertNotContains(t, yaml, "nginx:latest")
+	})
+
+	t.Run("Job name override", func(t *testing.T) {
+		var buf bytes.Buffer
+		err := gen.Generate("Job", map[string]string{"name": "batch-job"}, &buf)
+		if err != nil {
+			t.Fatalf("Generate(Job) failed: %v", err)
+		}
+		yaml := buf.String()
+		assertContains(t, yaml, "name: batch-job")
+		assertContains(t, yaml, "app.kubernetes.io/name: batch-job")
+	})
+}
+
+func assertContains(t *testing.T, yaml, expected string) {
+	t.Helper()
+	if !strings.Contains(yaml, expected) {
+		t.Errorf("YAML missing expected %q\ngot:\n%s", expected, yaml)
+	}
+}
+
+func assertNotContains(t *testing.T, yaml, forbidden string) {
+	t.Helper()
+	if strings.Contains(yaml, forbidden) {
+		t.Errorf("YAML should NOT contain %q\ngot:\n%s", forbidden, yaml)
+	}
+}
+
 func TestAliasResolution(t *testing.T) {
 	gen := newTestGenerator(t)
 

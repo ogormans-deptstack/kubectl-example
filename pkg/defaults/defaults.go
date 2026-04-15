@@ -54,8 +54,6 @@ func fieldNameDefaults(field, kind string) (any, bool) {
 		return []string{"ReadWriteOnce"}, true
 	case "storage":
 		return "1Gi", true
-	case "command":
-		return []string{"sleep", "3600"}, true
 	case "cpu":
 		return "250m", true
 	case "memory":
@@ -166,6 +164,7 @@ var importantFields = map[string]bool{
 	"path":                 true,
 	"port":                 true,
 	"number":               true,
+	"host":                 true,
 }
 
 func IsImportantField(fieldName string) bool {
