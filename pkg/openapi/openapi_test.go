@@ -1,7 +1,6 @@
 package openapi
 
 import (
-	"encoding/json"
 	"testing"
 )
 
@@ -202,13 +201,4 @@ func TestParseDocument(t *testing.T) {
 			t.Fatal("expected error for invalid JSON")
 		}
 	})
-}
-
-func mustMarshal(t *testing.T, v any) []byte {
-	t.Helper()
-	data, err := json.Marshal(v)
-	if err != nil {
-		t.Fatalf("marshal error: %v", err)
-	}
-	return data
 }

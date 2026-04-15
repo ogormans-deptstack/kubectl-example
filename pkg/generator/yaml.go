@@ -51,17 +51,17 @@ func writeYAML(buf *bytes.Buffer, val any, indent int, inArray bool) {
 		prioritizeKeys(keys)
 		for i, k := range keys {
 			if i == 0 && inArray {
-				buf.WriteString(fmt.Sprintf("%s:", k))
+				fmt.Fprintf(buf, "%s:", k)
 				writeMapValue(buf, v[k], indent)
 			} else {
-				buf.WriteString(fmt.Sprintf("%s%s:", prefix, k))
+				fmt.Fprintf(buf, "%s%s:", prefix, k)
 				writeMapValue(buf, v[k], indent)
 			}
 		}
 
 	case []any:
 		for _, item := range v {
-			buf.WriteString(fmt.Sprintf("%s- ", prefix))
+			fmt.Fprintf(buf, "%s- ", prefix)
 			switch elem := item.(type) {
 			case map[string]any:
 				writeYAML(buf, elem, indent+1, true)
