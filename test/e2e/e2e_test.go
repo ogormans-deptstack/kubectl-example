@@ -1,0 +1,252 @@
+//go:build e2e
+
+package e2e
+
+import (
+	"bytes"
+	"context"
+	"os/exec"
+	"strings"
+	"testing"
+	"time"
+)
+
+var resourceTypes = []struct {
+	name      string
+	gvr       string
+	getKind   string
+	extraArgs []string
+}{
+	{name: "pod", gvr: "v1/Pod", getKind: "pod"},
+	{name: "deployment", gvr: "apps/v1/Deployment", getKind: "deployment"},
+	{name: "service", gvr: "v1/Service", getKind: "service"},
+	{name: "configmap", gvr: "v1/ConfigMap", getKind: "configmap"},
+	{name: "secret", gvr: "v1/Secret", getKind: "secret"},
+	{name: "job", gvr: "batch/v1/Job", getKind: "job"},
+	{name: "cronjob", gvr: "batch/v1/CronJob", getKind: "cronjob"},
+	{name: "ingress", gvr: "networking.k8s.io/v1/Ingress", getKind: "ingress"},
+	{name: "networkpolicy", gvr: "networking.k8s.io/v1/NetworkPolicy", getKind: "networkpolicy"},
+	{name: "statefulset", gvr: "apps/v1/StatefulSet", getKind: "statefulset"},
+	{name: "daemonset", gvr: "apps/v1/DaemonSet", getKind: "daemonset"},
+	{name: "persistentvolumeclaim", gvr: "v1/PersistentVolumeClaim", getKind: "pvc"},
+	{name: "horizontalpodautoscaler", gvr: "autoscaling/v2/HorizontalPodAutoscaler", getKind: "hpa"},
+}
+
+func TestGenerateAndCreate(t *testing.T) {
+	binaryPath := findBinary(t)
+	ensureCluster(t)
+
+	for _, rt := range resourceTypes {
+		t.Run(rt.name, func(t *testing.T) {
+			t.Run("generates valid YAML", func(t *testing.T) {
+				yaml := runExample(t, binaryPath, rt.name, rt.extraArgs...)
+				assertValidYAML(t, yaml)
+				assertContainsKind(t, yaml, rt.name)
+			})
+
+			t.Run("creates resource via kubectl create", func(t *testing.T) {
+				yaml := runExample(t, binaryPath, rt.name, rt.extraArgs...)
+				kubectlCreate(t, yaml)
+				assertResourceExists(t, rt.getKind)
+			})
+
+			t.Run("server dry-run validates", func(t *testing.T) {
+				yaml := runExample(t, binaryPath, rt.name, rt.extraArgs...)
+				kubectlDryRun(t, yaml)
+			})
+		})
+	}
+}
+
+func TestDynamicFlags(t *testing.T) {
+	binaryPath := findBinary(t)
+	ensureCluster(t)
+
+	t.Run("deployment respects --name flag", func(t *testing.T) {
+		yaml := runExample(t, binaryPath, "deployment", "--name=custom-app")
+		assertYAMLContains(t, yaml, "name: custom-app")
+	})
+
+	t.Run("deployment respects --replicas flag", func(t *testing.T) {
+		yaml := runExample(t, binaryPath, "deployment", "--replicas=5")
+		assertYAMLContains(t, yaml, "replicas: 5")
+	})
+
+	t.Run("pod respects --image flag", func(t *testing.T) {
+		yaml := runExample(t, binaryPath, "pod", "--image=nginx:latest")
+		assertYAMLContains(t, yaml, "image: nginx:latest")
+	})
+}
+
+func TestSpecNuances(t *testing.T) {
+	binaryPath := findBinary(t)
+	ensureCluster(t)
+
+	t.Run("service includes ports spec", func(t *testing.T) {
+		yaml := runExample(t, binaryPath, "service")
+		assertYAMLContains(t, yaml, "ports:")
+	})
+
+	t.Run("statefulset includes serviceName", func(t *testing.T) {
+		yaml := runExample(t, binaryPath, "statefulset")
+		assertYAMLContains(t, yaml, "serviceName:")
+	})
+
+	t.Run("ingress includes rules", func(t *testing.T) {
+		yaml := runExample(t, binaryPath, "ingress")
+		assertYAMLContains(t, yaml, "rules:")
+	})
+
+	t.Run("cronjob includes schedule", func(t *testing.T) {
+		yaml := runExample(t, binaryPath, "cronjob")
+		assertYAMLContains(t, yaml, "schedule:")
+	})
+
+	t.Run("hpa includes metrics", func(t *testing.T) {
+		yaml := runExample(t, binaryPath, "horizontalpodautoscaler")
+		assertYAMLContains(t, yaml, "metrics:")
+	})
+
+	t.Run("pvc includes access modes and resources", func(t *testing.T) {
+		yaml := runExample(t, binaryPath, "persistentvolumeclaim")
+		assertYAMLContains(t, yaml, "accessModes:")
+		assertYAMLContains(t, yaml, "resources:")
+	})
+}
+
+func TestOpenAPISpecResilience(t *testing.T) {
+	binaryPath := findBinary(t)
+	ensureCluster(t)
+
+	t.Run("handles unknown resource type gracefully", func(t *testing.T) {
+		cmd := exec.Command(binaryPath, "nonexistentresource")
+		var stderr bytes.Buffer
+		cmd.Stderr = &stderr
+		err := cmd.Run()
+		if err == nil {
+			t.Fatal("expected error for unknown resource type")
+		}
+		if !strings.Contains(stderr.String(), "nonexistentresource") {
+			t.Errorf("error should mention the resource type, got: %s", stderr.String())
+		}
+	})
+
+	t.Run("list shows at least the 13 core types", func(t *testing.T) {
+		cmd := exec.Command(binaryPath, "--list")
+		out, err := cmd.Output()
+		if err != nil {
+			t.Fatalf("--list failed: %v", err)
+		}
+		output := string(out)
+		for _, rt := range resourceTypes {
+			if !strings.Contains(strings.ToLower(output), rt.name) {
+				t.Errorf("--list output missing resource type: %s", rt.name)
+			}
+		}
+	})
+}
+
+func findBinary(t *testing.T) string {
+	t.Helper()
+	path := "../bin/kubectl-example"
+	if _, err := exec.LookPath(path); err != nil {
+		path = "kubectl-example"
+		if _, err := exec.LookPath(path); err != nil {
+			t.Skip("kubectl-example binary not found; run 'make build' first")
+		}
+	}
+	return path
+}
+
+func ensureCluster(t *testing.T) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "kubectl", "cluster-info")
+	if err := cmd.Run(); err != nil {
+		t.Skip("no cluster available; start a kind cluster first")
+	}
+}
+
+func runExample(t *testing.T, binary string, resourceType string, extraArgs ...string) string {
+	t.Helper()
+	args := append([]string{resourceType}, extraArgs...)
+	cmd := exec.Command(binary, args...)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("kubectl-example %s failed: %v\nstderr: %s", resourceType, err, stderr.String())
+	}
+	return stdout.String()
+}
+
+func assertValidYAML(t *testing.T, yaml string) {
+	t.Helper()
+	if len(strings.TrimSpace(yaml)) == 0 {
+		t.Fatal("generated YAML is empty")
+	}
+	if !strings.Contains(yaml, "apiVersion:") {
+		t.Error("YAML missing apiVersion")
+	}
+	if !strings.Contains(yaml, "kind:") {
+		t.Error("YAML missing kind")
+	}
+	if !strings.Contains(yaml, "metadata:") {
+		t.Error("YAML missing metadata")
+	}
+}
+
+func assertContainsKind(t *testing.T, yaml string, resourceType string) {
+	t.Helper()
+	if !strings.Contains(strings.ToLower(yaml), "kind:") {
+		t.Errorf("YAML for %s missing kind field", resourceType)
+	}
+}
+
+func assertYAMLContains(t *testing.T, yaml string, substr string) {
+	t.Helper()
+	if !strings.Contains(yaml, substr) {
+		t.Errorf("YAML missing expected content %q\ngot:\n%s", substr, yaml)
+	}
+}
+
+func kubectlCreate(t *testing.T, yaml string) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "kubectl", "create", "-f", "-")
+	cmd.Stdin = strings.NewReader(yaml)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("kubectl create failed: %v\nstderr: %s\nyaml:\n%s", err, stderr.String(), yaml)
+	}
+}
+
+func kubectlDryRun(t *testing.T, yaml string) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "kubectl", "create", "--dry-run=server", "-f", "-")
+	cmd.Stdin = strings.NewReader(yaml)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("kubectl create --dry-run=server failed: %v\nstderr: %s\nyaml:\n%s", err, stderr.String(), yaml)
+	}
+}
+
+func assertResourceExists(t *testing.T, kind string) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "kubectl", "get", kind, "--no-headers")
+	out, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("kubectl get %s failed: %v", kind, err)
+	}
+	if len(strings.TrimSpace(string(out))) == 0 {
+		t.Errorf("no %s resources found after create", kind)
+	}
+}
