@@ -435,7 +435,7 @@ func (g *OpenAPIGenerator) setNestedField(root map[string]any, path string, valu
 	}
 }
 
-func parseArrayIndex(part string) (int, string, bool) {
+func parseArrayIndex(part string) (idx int, fieldName string, ok bool) {
 	openBracket := strings.Index(part, "[")
 	if openBracket < 0 {
 		return 0, "", false
@@ -444,9 +444,9 @@ func parseArrayIndex(part string) (int, string, bool) {
 	if closeBracket < 0 {
 		return 0, "", false
 	}
-	fieldName := part[:openBracket]
+	fieldName = part[:openBracket]
 	idxStr := part[openBracket+1 : closeBracket]
-	idx := 0
+	idx = 0
 	for _, ch := range idxStr {
 		if ch < '0' || ch > '9' {
 			return 0, "", false
