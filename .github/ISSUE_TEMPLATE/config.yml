@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: sig-cli Slack
+    url: https://kubernetes.slack.com/messages/sig-cli
+    about: Chat with the Kubernetes CLI community
+  - name: Kubernetes Forums
+    url: https://discuss.kubernetes.io
+    about: Ask questions on the Kubernetes discussion forum
+  - name: KEP Tracking Issue
+    url: https://github.com/kubernetes/enhancements/issues/5571
+    about: Track the upstream KEP for kubectl example

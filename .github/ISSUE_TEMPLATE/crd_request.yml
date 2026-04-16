@@ -1,0 +1,43 @@
+name: CRD Support Request
+description: Request example generation for a specific CRD
+labels: ["kind/crd-support"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        kubectl-example generates YAML for any CRD with a structural OpenAPI v3 schema.
+        Use this template to request testing and validation for a specific CRD.
+
+  - type: input
+    id: crd_name
+    attributes:
+      label: CRD project
+      description: Name of the CRD project (e.g., Argo Workflows, Istio, Crossplane)
+      placeholder: "cert-manager"
+    validations:
+      required: true
+
+  - type: textarea
+    id: kinds
+    attributes:
+      label: Resource kinds
+      description: Which specific kinds should be tested?
+      placeholder: |
+        - Certificate
+        - Issuer
+        - ClusterIssuer
+    validations:
+      required: true
+
+  - type: input
+    id: install_url
+    attributes:
+      label: CRD install URL
+      description: URL to install the CRD manifests (kubectl apply -f)
+      placeholder: "https://github.com/cert-manager/cert-manager/releases/download/v1.20.2/cert-manager.crds.yaml"
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Additional context
+      description: Any quirks, dependencies, or special requirements for this CRD.

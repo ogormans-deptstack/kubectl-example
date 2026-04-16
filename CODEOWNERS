@@ -1,0 +1,23 @@
+# Default owner for everything
+* @ogormans-deptstack
+
+# CI and release
+/.github/ @ogormans-deptstack
+/.goreleaser.yaml @ogormans-deptstack
+/.krew.yaml @ogormans-deptstack
+
+# Core generator
+/pkg/generator/ @ogormans-deptstack
+/pkg/openapi/ @ogormans-deptstack
+/pkg/defaults/ @ogormans-deptstack
+/pkg/flags/ @ogormans-deptstack
+
+# Tests
+/test/ @ogormans-deptstack
+
+# Infrastructure
+/infra/ @ogormans-deptstack
+
+# Documentation
+/docs/ @ogormans-deptstack
+README.md @ogormans-deptstack
