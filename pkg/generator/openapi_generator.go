@@ -534,6 +534,9 @@ func (g *OpenAPIGenerator) fixArgoDefaults(spec map[string]any, kind string) {
 	// CronWorkflow wraps the workflow spec inside spec.workflowSpec
 	target := spec
 	if kind == "CronWorkflow" {
+		if _, ok := spec["schedule"]; !ok {
+			spec["schedule"] = "*/5 * * * *"
+		}
 		if ws, ok := spec["workflowSpec"].(map[string]any); ok {
 			target = ws
 		}
