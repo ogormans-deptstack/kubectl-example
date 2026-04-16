@@ -49,6 +49,9 @@ func fieldNameDefaults(field, kind string) (any, bool) {
 		if kindLower == "secret" {
 			return "Opaque", true
 		}
+		if kindLower == "limitrange" {
+			return "Container", true
+		}
 		return nil, false
 	case "accessmodes":
 		return []string{"ReadWriteOnce"}, true
@@ -105,6 +108,166 @@ func fieldNameDefaults(field, kind string) (any, bool) {
 			return map[string]string{"username": "YWRtaW4=", "password": "cGFzc3dvcmQ="}, true
 		}
 		return nil, false
+	case "minavailable":
+		return 1, true
+	case "hard":
+		return map[string]any{
+			"cpu":    "10",
+			"memory": "20Gi",
+			"pods":   "20",
+		}, true
+	case "provisioner":
+		return "kubernetes.io/no-provisioner", true
+	case "volumebindingmode":
+		return "WaitForFirstConsumer", true
+	case "reclaimpolicy":
+		return "Delete", true
+	case "value":
+		if kindLower == "priorityclass" {
+			return 1000000, true
+		}
+		return nil, false
+	case "globaldefault":
+		return false, true
+	case "preemptionpolicy":
+		return "PreemptLowerPriority", true
+	case "description":
+		if kindLower == "priorityclass" {
+			return "Example priority class", true
+		}
+		return nil, false
+	case "handler":
+		return "example-handler", true
+	case "controller":
+		return "example.com/ingress-controller", true
+	case "admissionreviewversions":
+		return []string{"v1"}, true
+	case "sideeffects":
+		return "None", true
+	case "failurepolicy":
+		return "Fail", true
+	case "timeoutseconds":
+		return 5, true
+	case "cabundle":
+		return "LS0tLS1CRUdJTi...", true
+	case "scope":
+		if kindLower == "customresourcedefinition" {
+			return "Namespaced", true
+		}
+		return nil, false
+	case "group":
+		if kindLower == "customresourcedefinition" {
+			return "example.com", true
+		}
+		return nil, false
+	case "apigroups":
+		return []string{""}, true
+	case "resources":
+		if kindLower == "role" || kindLower == "clusterrole" {
+			return []string{"pods"}, true
+		}
+		return nil, false
+	case "verbs":
+		return []string{"get", "list", "watch"}, true
+	case "roleref":
+		roleKind := "Role"
+		roleName := "example-role"
+		if kindLower == "clusterrolebinding" {
+			roleKind = "ClusterRole"
+			roleName = "example-clusterrole"
+		}
+		return map[string]any{
+			"apiGroup": "rbac.authorization.k8s.io",
+			"kind":     roleKind,
+			"name":     roleName,
+		}, true
+	case "subjects":
+		return []any{
+			map[string]any{
+				"kind":      "ServiceAccount",
+				"name":      "example-sa",
+				"namespace": "default",
+			},
+		}, true
+	case "rules":
+		if kindLower == "role" || kindLower == "clusterrole" {
+			return []any{
+				map[string]any{
+					"apiGroups": []string{""},
+					"resources": []string{"pods"},
+					"verbs":     []string{"get", "list", "watch"},
+				},
+			}, true
+		}
+		return nil, false
+	case "webhooks":
+		return []any{
+			map[string]any{
+				"name":                    "example-webhook.example.com",
+				"admissionReviewVersions": []string{"v1"},
+				"sideEffects":             "None",
+				"failurePolicy":           "Fail",
+				"timeoutSeconds":          5,
+				"clientConfig": map[string]any{
+					"service": map[string]any{
+						"name":      "example-webhook",
+						"namespace": "default",
+						"path":      "/validate",
+					},
+				},
+				"rules": []any{
+					map[string]any{
+						"apiGroups":   []string{""},
+						"apiVersions": []string{"v1"},
+						"operations":  []string{"CREATE", "UPDATE"},
+						"resources":   []string{"pods"},
+						"scope":       "Namespaced",
+					},
+				},
+			},
+		}, true
+	case "names":
+		if kindLower == "customresourcedefinition" {
+			return map[string]any{
+				"kind":     "Example",
+				"plural":   "examples",
+				"singular": "example",
+			}, true
+		}
+		return nil, false
+	case "versions":
+		if kindLower == "customresourcedefinition" {
+			return []any{
+				map[string]any{
+					"name":    "v1",
+					"served":  true,
+					"storage": true,
+					"schema": map[string]any{
+						"openAPIV3Schema": map[string]any{
+							"type": "object",
+							"properties": map[string]any{
+								"spec": map[string]any{
+									"type": "object",
+								},
+							},
+						},
+					},
+				},
+			}, true
+		}
+		return nil, false
+	case "capacity":
+		return map[string]any{
+			"storage": "10Gi",
+		}, true
+	case "persistentvolumereclaimpolicy":
+		return "Retain", true
+	case "storageclassname":
+		return "standard", true
+	case "hostpath":
+		return map[string]any{
+			"path": "/data",
+		}, true
 	}
 	return nil, false
 }
@@ -166,6 +329,34 @@ var importantFields = map[string]bool{
 	"number":               true,
 	"host":                 true,
 	"restartpolicy":        true,
+
+	"subjects":          true,
+	"roleref":           true,
+	"apigroups":         true,
+	"verbs":             true,
+	"minavailable":      true,
+	"hard":              true,
+	"provisioner":       true,
+	"volumebindingmode": true,
+	"reclaimpolicy":     true,
+	"globaldefault":     true,
+	"value":             true,
+
+	"webhooks":                      true,
+	"admissionreviewversions":       true,
+	"sideeffects":                   true,
+	"clientconfig":                  true,
+	"capacity":                      true,
+	"persistentvolumereclaimpolicy": true,
+	"storageclassname":              true,
+	"hostpath":                      true,
+	"handler":                       true,
+	"controller":                    true,
+	"names":                         true,
+	"group":                         true,
+	"scope":                         true,
+	"versions":                      true,
+	"description":                   true,
 }
 
 func IsImportantField(fieldName string) bool {

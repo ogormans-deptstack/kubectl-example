@@ -98,6 +98,74 @@ func TestGenerateYAML(t *testing.T) {
 			name:           "HorizontalPodAutoscaler",
 			requiredFields: []string{"apiVersion: autoscaling/v2", "kind: HorizontalPodAutoscaler", "spec:", "scaleTargetRef:"},
 		},
+		{
+			name:           "Role",
+			requiredFields: []string{"apiVersion: rbac.authorization.k8s.io/v1", "kind: Role", "metadata:", "rules:"},
+		},
+		{
+			name:           "ClusterRole",
+			requiredFields: []string{"apiVersion: rbac.authorization.k8s.io/v1", "kind: ClusterRole", "metadata:", "rules:"},
+		},
+		{
+			name:           "RoleBinding",
+			requiredFields: []string{"apiVersion: rbac.authorization.k8s.io/v1", "kind: RoleBinding", "metadata:", "subjects:", "roleRef:"},
+		},
+		{
+			name:           "ClusterRoleBinding",
+			requiredFields: []string{"apiVersion: rbac.authorization.k8s.io/v1", "kind: ClusterRoleBinding", "metadata:", "subjects:", "roleRef:"},
+		},
+		{
+			name:           "ServiceAccount",
+			requiredFields: []string{"apiVersion: v1", "kind: ServiceAccount", "metadata:"},
+		},
+		{
+			name:           "Namespace",
+			requiredFields: []string{"apiVersion: v1", "kind: Namespace", "metadata:"},
+		},
+		{
+			name:           "PodDisruptionBudget",
+			requiredFields: []string{"apiVersion: policy/v1", "kind: PodDisruptionBudget", "metadata:", "spec:", "selector:"},
+		},
+		{
+			name:           "ResourceQuota",
+			requiredFields: []string{"apiVersion: v1", "kind: ResourceQuota", "metadata:", "spec:", "hard:"},
+		},
+		{
+			name:           "LimitRange",
+			requiredFields: []string{"apiVersion: v1", "kind: LimitRange", "metadata:", "spec:", "limits:"},
+		},
+		{
+			name:           "PersistentVolume",
+			requiredFields: []string{"apiVersion: v1", "kind: PersistentVolume", "metadata:", "spec:", "capacity:", "accessModes:"},
+		},
+		{
+			name:           "IngressClass",
+			requiredFields: []string{"apiVersion: networking.k8s.io/v1", "kind: IngressClass", "metadata:", "spec:", "controller:"},
+		},
+		{
+			name:           "StorageClass",
+			requiredFields: []string{"apiVersion: storage.k8s.io/v1", "kind: StorageClass", "metadata:", "provisioner:"},
+		},
+		{
+			name:           "PriorityClass",
+			requiredFields: []string{"apiVersion: scheduling.k8s.io/v1", "kind: PriorityClass", "metadata:", "value:"},
+		},
+		{
+			name:           "ValidatingWebhookConfiguration",
+			requiredFields: []string{"apiVersion: admissionregistration.k8s.io/v1", "kind: ValidatingWebhookConfiguration", "metadata:", "webhooks:"},
+		},
+		{
+			name:           "MutatingWebhookConfiguration",
+			requiredFields: []string{"apiVersion: admissionregistration.k8s.io/v1", "kind: MutatingWebhookConfiguration", "metadata:", "webhooks:"},
+		},
+		{
+			name:           "CustomResourceDefinition",
+			requiredFields: []string{"apiVersion: apiextensions.k8s.io/v1", "kind: CustomResourceDefinition", "metadata:", "spec:", "group:", "names:", "scope:"},
+		},
+		{
+			name:           "RuntimeClass",
+			requiredFields: []string{"apiVersion: node.k8s.io/v1", "kind: RuntimeClass", "metadata:", "handler:"},
+		},
 	}
 
 	crdTypes := []struct {
@@ -407,6 +475,102 @@ func TestManifestQuality(t *testing.T) {
 		assertContains(t, yaml, "podSelector:")
 		assertContains(t, yaml, "ingress:")
 		assertContains(t, yaml, "egress:")
+	})
+
+	t.Run("Role has rules with apiGroups, resources, and verbs", func(t *testing.T) {
+		yaml := generateYAML(t, "Role")
+		assertContains(t, yaml, "rules:")
+		assertContains(t, yaml, "apiGroups:")
+		assertContains(t, yaml, "resources:")
+		assertContains(t, yaml, "verbs:")
+	})
+
+	t.Run("ClusterRole has rules with apiGroups, resources, and verbs", func(t *testing.T) {
+		yaml := generateYAML(t, "ClusterRole")
+		assertContains(t, yaml, "rules:")
+		assertContains(t, yaml, "apiGroups:")
+		assertContains(t, yaml, "resources:")
+		assertContains(t, yaml, "verbs:")
+	})
+
+	t.Run("RoleBinding has subjects and roleRef with required fields", func(t *testing.T) {
+		yaml := generateYAML(t, "RoleBinding")
+		assertContains(t, yaml, "subjects:")
+		assertContains(t, yaml, "roleRef:")
+		assertContains(t, yaml, "apiGroup:")
+		assertContains(t, yaml, "kind:")
+		assertContains(t, yaml, "name:")
+	})
+
+	t.Run("ClusterRoleBinding has subjects and roleRef", func(t *testing.T) {
+		yaml := generateYAML(t, "ClusterRoleBinding")
+		assertContains(t, yaml, "subjects:")
+		assertContains(t, yaml, "roleRef:")
+	})
+
+	t.Run("PodDisruptionBudget has minAvailable and selector", func(t *testing.T) {
+		yaml := generateYAML(t, "PodDisruptionBudget")
+		assertContains(t, yaml, "selector:")
+		assertContains(t, yaml, "minAvailable:")
+	})
+
+	t.Run("ResourceQuota has hard with resource limits", func(t *testing.T) {
+		yaml := generateYAML(t, "ResourceQuota")
+		assertContains(t, yaml, "hard:")
+		assertContains(t, yaml, "cpu:")
+		assertContains(t, yaml, "memory:")
+	})
+
+	t.Run("LimitRange has limits with type Container", func(t *testing.T) {
+		yaml := generateYAML(t, "LimitRange")
+		assertContains(t, yaml, "limits:")
+		assertContains(t, yaml, "type:")
+	})
+
+	t.Run("PersistentVolume has capacity and accessModes", func(t *testing.T) {
+		yaml := generateYAML(t, "PersistentVolume")
+		assertContains(t, yaml, "capacity:")
+		assertContains(t, yaml, "storage:")
+		assertContains(t, yaml, "accessModes:")
+		assertContains(t, yaml, "ReadWriteOnce")
+	})
+
+	t.Run("IngressClass has controller field", func(t *testing.T) {
+		yaml := generateYAML(t, "IngressClass")
+		assertContains(t, yaml, "controller:")
+	})
+
+	t.Run("StorageClass has provisioner and volumeBindingMode", func(t *testing.T) {
+		yaml := generateYAML(t, "StorageClass")
+		assertContains(t, yaml, "provisioner:")
+		assertContains(t, yaml, "volumeBindingMode:")
+	})
+
+	t.Run("PriorityClass has value and globalDefault", func(t *testing.T) {
+		yaml := generateYAML(t, "PriorityClass")
+		assertContains(t, yaml, "value:")
+		assertContains(t, yaml, "globalDefault:")
+	})
+
+	t.Run("ValidatingWebhookConfiguration has webhooks with required fields", func(t *testing.T) {
+		yaml := generateYAML(t, "ValidatingWebhookConfiguration")
+		assertContains(t, yaml, "webhooks:")
+		assertContains(t, yaml, "admissionReviewVersions:")
+		assertContains(t, yaml, "sideEffects:")
+		assertContains(t, yaml, "clientConfig:")
+	})
+
+	t.Run("MutatingWebhookConfiguration has webhooks with required fields", func(t *testing.T) {
+		yaml := generateYAML(t, "MutatingWebhookConfiguration")
+		assertContains(t, yaml, "webhooks:")
+		assertContains(t, yaml, "admissionReviewVersions:")
+		assertContains(t, yaml, "sideEffects:")
+		assertContains(t, yaml, "clientConfig:")
+	})
+
+	t.Run("RuntimeClass has handler field", func(t *testing.T) {
+		yaml := generateYAML(t, "RuntimeClass")
+		assertContains(t, yaml, "handler:")
 	})
 }
 
@@ -819,6 +983,13 @@ func TestAliasResolution(t *testing.T) {
 		"ds":     "DaemonSet",
 		"pvc":    "PersistentVolumeClaim",
 		"hpa":    "HorizontalPodAutoscaler",
+		"sa":     "ServiceAccount",
+		"ns":     "Namespace",
+		"pdb":    "PodDisruptionBudget",
+		"pv":     "PersistentVolume",
+		"sc":     "StorageClass",
+		"pc":     "PriorityClass",
+		"quota":  "ResourceQuota",
 	}
 
 	for alias, expectedKind := range aliases {

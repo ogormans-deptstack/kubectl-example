@@ -126,8 +126,25 @@ All resource types in the cluster's OpenAPI v3 spec are supported, including CRD
 | DaemonSet | apps/v1 | UpdateStrategy |
 | PersistentVolumeClaim | v1 | AccessModes, storage request |
 | HorizontalPodAutoscaler | autoscaling/v2 | CPU target, scaleTargetRef |
+| Role | rbac.authorization.k8s.io/v1 | RBAC rules with apiGroups, resources, verbs |
+| ClusterRole | rbac.authorization.k8s.io/v1 | Cluster-scoped RBAC rules |
+| RoleBinding | rbac.authorization.k8s.io/v1 | Binds Role to subjects |
+| ClusterRoleBinding | rbac.authorization.k8s.io/v1 | Binds ClusterRole to subjects |
+| ServiceAccount | v1 | |
+| Namespace | v1 | |
+| ResourceQuota | v1 | CPU, memory, pod limits |
+| LimitRange | v1 | Container default/min/max limits |
+| PersistentVolume | v1 | hostPath, capacity, reclaim policy |
+| PodDisruptionBudget | policy/v1 | minAvailable with selector |
+| IngressClass | networking.k8s.io/v1 | Controller reference |
+| StorageClass | storage.k8s.io/v1 | Provisioner, volume binding mode |
+| PriorityClass | scheduling.k8s.io/v1 | Priority value, preemption policy |
+| RuntimeClass | node.k8s.io/v1 | Handler name |
+| ValidatingWebhookConfiguration | admissionregistration.k8s.io/v1 | Webhook rules, admission review versions |
+| MutatingWebhookConfiguration | admissionregistration.k8s.io/v1 | Webhook rules, admission review versions |
+| CustomResourceDefinition | apiextensions.k8s.io/v1 | Group, names, versions with schema |
 
-CRDs tested: CronTab (custom), Gateway API (HTTPRoute, Gateway, GatewayClass, GRPCRoute, TCPRoute, TLSRoute, UDPRoute, ReferenceGrant, BackendLBPolicy, BackendTLSPolicy).
+CRDs tested: CronTab (custom), Gateway API (HTTPRoute, Gateway, GatewayClass, GRPCRoute, TCPRoute, TLSRoute, UDPRoute, ReferenceGrant, BackendLBPolicy, BackendTLSPolicy), Argo Workflows (Workflow, CronWorkflow, WorkflowTemplate, ClusterWorkflowTemplate), cert-manager (Certificate, Issuer, ClusterIssuer), Crossplane (Composition, CompositeResourceDefinition, EnvironmentConfig).
 
 ## How It Works
 
@@ -187,6 +204,22 @@ excluded := map[string]bool{
 
 The generator uses a depth-limited walk with an important-fields registry to balance minimal output against practical usefulness. Required fields are always included. Optional fields are included when they're commonly needed for a valid, apply-ready resource (strategy, ports, resources, selector). The heuristics are intentionally conservative -- it's better to produce a minimal working manifest than to overwhelm the user with every possible field.
 
+### Generation Tradeoffs
+
+Generating useful starter manifests from raw OpenAPI schemas requires making opinionated choices. The generator favours minimal, apply-ready output over completeness -- `--set` is the escape hatch for anything it leaves out.
+
+| Resource | Tradeoff | What the generator does |
+|----------|----------|------------------------|
+| PodDisruptionBudget | `minAvailable` and `maxUnavailable` are mutually exclusive | Emits `minAvailable` only; use `--set maxUnavailable=1` to switch |
+| PersistentVolume | Schema contains 20+ volume source types but only one may be set | Picks `hostPath` (simplest local option), strips the rest |
+| LimitRange | `maxLimitRequestRatio` requires values that are valid ratios of min/max | Omits the ratio; sets sensible `default`, `defaultRequest`, `min`, `max` |
+| IngressClass | `parameters` block gets invalid generated values (empty kind, wrong scope) | Omits `parameters` entirely; user can add via `--set` |
+| CustomResourceDefinition | Name must be `{plural}.{group}`, not a generic example name | Auto-generates a valid name from the group and plural fields |
+| Pod-bearing types | `tolerations`, `topologySpreadConstraints`, `overhead`, `readinessGates` are walked due to the important-fields heuristic but add noise | Stripped from all pod specs (Pod, Deployment, StatefulSet, DaemonSet, Job, ReplicaSet, CronJob) |
+| ClusterRoleBinding | `roleRef.kind` defaults to `Role` but must be `ClusterRole` for cluster-scoped bindings | Uses a kind-specific default to emit `ClusterRole` |
+
+These are intentional simplifications. The goal is a manifest you can `kubectl apply` immediately, then iterate on. For full control over any field, use `--set key=value`.
+
 ### Override Priority
 
 Override flags are applied in a fixed order: typed flags (`--name`, `--image`, `--replicas`) run first, then `--set key=value` overrides. This means `--set` can override typed flags when both target the same field. This is intentional -- `--set` is the escape hatch for arbitrary fields.
@@ -197,9 +230,9 @@ This project is in active development, presented at the [sig-cli bi-weekly meeti
 
 ### Current State
 
-- 13 core resource types pass server-side dry-run validation
-- CRD support working (Gateway API, CronTab)
-- ~190 unit tests, 101 e2e tests against a kind cluster
+- 30 core resource types pass server-side dry-run validation
+- CRD support working (Gateway API, CronTab, Argo Workflows, cert-manager, Crossplane)
+- ~266 unit tests, e2e tests against a kind cluster
 - CI with golangci-lint v2, Go 1.25/1.26 matrix, e2e on kind
 
 ### Incremental Expansion Plan

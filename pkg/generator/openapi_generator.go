@@ -94,7 +94,7 @@ func (g *OpenAPIGenerator) buildManifest(gvk openapi.GVK, schema map[string]any)
 
 	specSchema, ok := props["spec"].(map[string]any)
 	if !ok {
-		g.addDataFields(manifest, gvk, props)
+		g.addTopLevelFields(manifest, gvk, props)
 		return manifest.toMap()
 	}
 
@@ -105,19 +105,50 @@ func (g *OpenAPIGenerator) buildManifest(gvk openapi.GVK, schema map[string]any)
 		g.injectTemplateRestartPolicy(spec, gvk.Kind)
 		g.fixStrategyDefaults(spec, gvk.Kind)
 		g.injectServiceSelector(spec, gvk.Kind, name)
+		g.fixCRDDefaults(spec, manifest, gvk.Kind)
+		g.fixPDBDefaults(spec, gvk.Kind)
+		g.fixPVDefaults(spec, gvk.Kind)
+		g.fixIngressClassDefaults(spec, gvk.Kind)
+		g.fixLimitRangeDefaults(spec, gvk.Kind)
+		g.stripNoisyFields(spec, gvk.Kind)
 		manifest.set("spec", spec)
 	}
 
 	return manifest.toMap()
 }
 
-func (g *OpenAPIGenerator) addDataFields(manifest *orderedMap, gvk openapi.GVK, props map[string]any) {
+func (g *OpenAPIGenerator) addTopLevelFields(manifest *orderedMap, gvk openapi.GVK, props map[string]any) {
 	kind := gvk.Kind
-	if _, ok := props["data"]; ok {
-		if v := defaults.ValueForField("data", "object", "", kind); v != nil {
-			manifest.set("data", v)
+
+	for fieldName, fieldSchema := range props {
+		lower := strings.ToLower(fieldName)
+		if lower == "apiversion" || lower == "kind" || lower == "metadata" {
+			continue
+		}
+
+		if !defaults.IsImportantField(fieldName) {
+			continue
+		}
+
+		if v := defaults.ValueForField(fieldName, "object", "", kind); v != nil {
+			manifest.set(fieldName, v)
+			continue
+		}
+
+		fieldMap, ok := fieldSchema.(map[string]any)
+		if !ok {
+			continue
+		}
+		resolved, err := openapi.ResolveSchema(g.doc.Raw(), fieldMap)
+		if err != nil {
+			continue
+		}
+		val := g.generateValue(fieldName, resolved, kind, 0)
+		if val != nil {
+			manifest.set(fieldName, val)
 		}
 	}
+
 	if kind == "Secret" {
 		if _, ok := props["type"]; ok {
 			manifest.set("type", "Opaque")
@@ -203,6 +234,16 @@ func (g *OpenAPIGenerator) walkSchema(schema map[string]any, kind string, depth 
 func (g *OpenAPIGenerator) generateValue(fieldName string, schema map[string]any, kind string, depth int) any {
 	schemaType := openapi.SchemaType(schema)
 	format, _ := schema["format"].(string)
+
+	if format == "int-or-string" {
+		if v, ok := g.overrides[fieldName]; ok {
+			return parseIntOrString(v)
+		}
+		if v, ok := defaults.FieldDefault(fieldName, kind); ok {
+			return v
+		}
+		return 1
+	}
 
 	switch schemaType {
 	case "object":
@@ -414,6 +455,108 @@ func (g *OpenAPIGenerator) fixStrategyDefaults(spec map[string]any, kind string)
 	}
 }
 
+func (g *OpenAPIGenerator) fixCRDDefaults(spec map[string]any, manifest *orderedMap, kind string) {
+	if kind != "CustomResourceDefinition" {
+		return
+	}
+	delete(spec, "conversion")
+
+	names, ok := spec["names"].(map[string]any)
+	if !ok {
+		return
+	}
+	plural, _ := names["plural"].(string)
+	group, _ := spec["group"].(string)
+	if plural != "" && group != "" {
+		meta, _ := manifest.values["metadata"].(map[string]any)
+		if meta != nil {
+			crdName := plural + "." + group
+			meta["name"] = crdName
+			meta["labels"] = map[string]string{"app.kubernetes.io/name": crdName}
+		}
+	}
+}
+
+func (g *OpenAPIGenerator) fixPDBDefaults(spec map[string]any, kind string) {
+	if kind != "PodDisruptionBudget" {
+		return
+	}
+	if _, hasMin := spec["minAvailable"]; hasMin {
+		delete(spec, "maxUnavailable")
+	}
+}
+
+func (g *OpenAPIGenerator) fixPVDefaults(spec map[string]any, kind string) {
+	if kind != "PersistentVolume" {
+		return
+	}
+	volumeTypes := []string{
+		"awsElasticBlockStore", "azureDisk", "azureFile", "cephfs", "cinder",
+		"csi", "fc", "flexVolume", "flocker", "gcePersistentDisk", "glusterfs",
+		"iscsi", "local", "nfs", "photonPersistentDisk", "portworxVolume",
+		"quobyte", "rbd", "scaleIO", "storageos", "vsphereVolume",
+	}
+	for _, vt := range volumeTypes {
+		delete(spec, vt)
+	}
+}
+
+func (g *OpenAPIGenerator) fixIngressClassDefaults(spec map[string]any, kind string) {
+	if kind != "IngressClass" {
+		return
+	}
+	delete(spec, "parameters")
+}
+
+func (g *OpenAPIGenerator) fixLimitRangeDefaults(spec map[string]any, kind string) {
+	if kind != "LimitRange" {
+		return
+	}
+	limits, ok := spec["limits"].([]any)
+	if !ok || len(limits) == 0 {
+		return
+	}
+	entry, ok := limits[0].(map[string]any)
+	if !ok {
+		return
+	}
+	delete(entry, "maxLimitRequestRatio")
+	entry["default"] = map[string]any{"cpu": "500m", "memory": "256Mi"}
+	entry["defaultRequest"] = map[string]any{"cpu": "100m", "memory": "64Mi"}
+	entry["min"] = map[string]any{"cpu": "50m", "memory": "32Mi"}
+	entry["max"] = map[string]any{"cpu": "2", "memory": "1Gi"}
+}
+
+func (g *OpenAPIGenerator) stripNoisyFields(spec map[string]any, kind string) {
+	noisy := []string{"tolerations", "topologySpreadConstraints", "overhead", "readinessGates"}
+	stripFromPodSpec := func(podSpec map[string]any) {
+		for _, field := range noisy {
+			delete(podSpec, field)
+		}
+	}
+
+	switch kind {
+	case "Pod":
+		stripFromPodSpec(spec)
+	case "Deployment", "StatefulSet", "DaemonSet", "Job", "ReplicaSet":
+		if tmpl, ok := spec["template"].(map[string]any); ok {
+			if tmplSpec, ok := tmpl["spec"].(map[string]any); ok {
+				stripFromPodSpec(tmplSpec)
+			}
+		}
+	case "CronJob":
+		if jt, ok := spec["jobTemplate"].(map[string]any); ok {
+			if jtSpec, ok := jt["spec"].(map[string]any); ok {
+				if tmpl, ok := jtSpec["template"].(map[string]any); ok {
+					if tmplSpec, ok := tmpl["spec"].(map[string]any); ok {
+						stripFromPodSpec(tmplSpec)
+					}
+				}
+			}
+		}
+	}
+}
+
 func (g *OpenAPIGenerator) injectServiceSelector(spec map[string]any, kind, name string) {
 	if kind != "Service" {
 		return
@@ -512,19 +655,36 @@ func buildGVKIndex(doc *openapi.Document) map[string]openapi.GVK {
 
 func aliasesForKind(kind string) []string {
 	aliases := map[string][]string{
-		"Pod":                     {"po", "pods"},
-		"Deployment":              {"deploy", "deployments"},
-		"Service":                 {"svc", "services"},
-		"ConfigMap":               {"cm", "configmaps"},
-		"Secret":                  {"secrets"},
-		"Job":                     {"jobs"},
-		"CronJob":                 {"cj", "cronjobs"},
-		"Ingress":                 {"ing", "ingresses"},
-		"NetworkPolicy":           {"netpol", "networkpolicies"},
-		"StatefulSet":             {"sts", "statefulsets"},
-		"DaemonSet":               {"ds", "daemonsets"},
-		"PersistentVolumeClaim":   {"pvc", "persistentvolumeclaims"},
-		"HorizontalPodAutoscaler": {"hpa", "horizontalpodautoscalers"},
+		"Pod":                            {"po", "pods"},
+		"Deployment":                     {"deploy", "deployments"},
+		"Service":                        {"svc", "services"},
+		"ConfigMap":                      {"cm", "configmaps"},
+		"Secret":                         {"secrets"},
+		"Job":                            {"jobs"},
+		"CronJob":                        {"cj", "cronjobs"},
+		"Ingress":                        {"ing", "ingresses"},
+		"NetworkPolicy":                  {"netpol", "networkpolicies"},
+		"StatefulSet":                    {"sts", "statefulsets"},
+		"DaemonSet":                      {"ds", "daemonsets"},
+		"PersistentVolumeClaim":          {"pvc", "persistentvolumeclaims"},
+		"HorizontalPodAutoscaler":        {"hpa", "horizontalpodautoscalers"},
+		"ServiceAccount":                 {"sa", "serviceaccounts"},
+		"Namespace":                      {"ns", "namespaces"},
+		"PodDisruptionBudget":            {"pdb", "poddisruptionbudgets"},
+		"ResourceQuota":                  {"quota", "resourcequotas"},
+		"LimitRange":                     {"limits", "limitranges"},
+		"PersistentVolume":               {"pv", "persistentvolumes"},
+		"IngressClass":                   {"ingressclasses"},
+		"StorageClass":                   {"sc", "storageclasses"},
+		"PriorityClass":                  {"pc", "priorityclasses"},
+		"Role":                           {"roles"},
+		"ClusterRole":                    {"clusterroles"},
+		"RoleBinding":                    {"rolebindings"},
+		"ClusterRoleBinding":             {"clusterrolebindings"},
+		"ValidatingWebhookConfiguration": {"vwc"},
+		"MutatingWebhookConfiguration":   {"mwc"},
+		"CustomResourceDefinition":       {"crd", "crds", "customresourcedefinitions"},
+		"RuntimeClass":                   {"runtimeclasses"},
 	}
 	return aliases[kind]
 }
@@ -534,6 +694,11 @@ func singularize(s string) string {
 		"ingresses":              "ingress",
 		"networkpolicies":        "networkpolicy",
 		"persistentvolumeclaims": "persistentvolumeclaim",
+		"storageclasses":         "storageclass",
+		"ingressclasses":         "ingressclass",
+		"priorityclasses":        "priorityclass",
+		"runtimeclasses":         "runtimeclass",
+		"limitranges":            "limitrange",
 	}
 	if v, ok := irregulars[s]; ok {
 		return v

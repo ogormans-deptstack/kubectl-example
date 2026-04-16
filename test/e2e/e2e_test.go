@@ -31,6 +31,29 @@ var resourceTypes = []struct {
 	{name: "daemonset", gvr: "apps/v1/DaemonSet", getKind: "daemonset"},
 	{name: "persistentvolumeclaim", gvr: "v1/PersistentVolumeClaim", getKind: "pvc"},
 	{name: "horizontalpodautoscaler", gvr: "autoscaling/v2/HorizontalPodAutoscaler", getKind: "hpa"},
+	{name: "role", gvr: "rbac.authorization.k8s.io/v1/Role", getKind: "role"},
+	{name: "clusterrole", gvr: "rbac.authorization.k8s.io/v1/ClusterRole", getKind: "clusterrole"},
+	{name: "rolebinding", gvr: "rbac.authorization.k8s.io/v1/RoleBinding", getKind: "rolebinding"},
+	{name: "clusterrolebinding", gvr: "rbac.authorization.k8s.io/v1/ClusterRoleBinding", getKind: "clusterrolebinding"},
+	{name: "serviceaccount", gvr: "v1/ServiceAccount", getKind: "serviceaccount"},
+	{name: "resourcequota", gvr: "v1/ResourceQuota", getKind: "resourcequota"},
+	{name: "limitrange", gvr: "v1/LimitRange", getKind: "limitrange"},
+	{name: "persistentvolume", gvr: "v1/PersistentVolume", getKind: "pv"},
+	{name: "poddisruptionbudget", gvr: "policy/v1/PodDisruptionBudget", getKind: "pdb"},
+	{name: "ingressclass", gvr: "networking.k8s.io/v1/IngressClass", getKind: "ingressclass"},
+	{name: "storageclass", gvr: "storage.k8s.io/v1/StorageClass", getKind: "storageclass"},
+	{name: "priorityclass", gvr: "scheduling.k8s.io/v1/PriorityClass", getKind: "priorityclass"},
+	{name: "runtimeclass", gvr: "node.k8s.io/v1/RuntimeClass", getKind: "runtimeclass"},
+}
+
+var dryRunOnlyTypes = []struct {
+	name    string
+	getKind string
+}{
+	{name: "namespace", getKind: "namespace"},
+	{name: "validatingwebhookconfiguration", getKind: "validatingwebhookconfiguration"},
+	{name: "mutatingwebhookconfiguration", getKind: "mutatingwebhookconfiguration"},
+	{name: "customresourcedefinition", getKind: "customresourcedefinition"},
 }
 
 var crdTypes = []struct {
@@ -114,6 +137,26 @@ func TestGenerateAndCreate(t *testing.T) {
 	}
 }
 
+func TestDryRunOnlyGenerateAndValidate(t *testing.T) {
+	binaryPath := findBinary(t)
+	ensureCluster(t)
+
+	for _, rt := range dryRunOnlyTypes {
+		t.Run(rt.name, func(t *testing.T) {
+			t.Run("generates valid YAML", func(t *testing.T) {
+				yaml := runExample(t, binaryPath, rt.name)
+				assertValidYAML(t, yaml)
+				assertContainsKind(t, yaml, rt.name)
+			})
+
+			t.Run("server dry-run validates", func(t *testing.T) {
+				yaml := runExample(t, binaryPath, rt.name)
+				kubectlDryRun(t, yaml)
+			})
+		})
+	}
+}
+
 func TestDynamicFlags(t *testing.T) {
 	binaryPath := findBinary(t)
 	ensureCluster(t)
@@ -167,6 +210,95 @@ func TestSpecNuances(t *testing.T) {
 		yaml := runExample(t, binaryPath, "persistentvolumeclaim")
 		assertYAMLContains(t, yaml, "accessModes:")
 		assertYAMLContains(t, yaml, "resources:")
+	})
+}
+
+func TestNativeResourceSpecNuances(t *testing.T) {
+	binaryPath := findBinary(t)
+	ensureCluster(t)
+
+	t.Run("role contains rules", func(t *testing.T) {
+		yaml := runExample(t, binaryPath, "role")
+		assertYAMLContains(t, yaml, "rules:")
+	})
+
+	t.Run("clusterrole contains rules", func(t *testing.T) {
+		yaml := runExample(t, binaryPath, "clusterrole")
+		assertYAMLContains(t, yaml, "rules:")
+	})
+
+	t.Run("rolebinding contains roleRef and subjects", func(t *testing.T) {
+		yaml := runExample(t, binaryPath, "rolebinding")
+		assertYAMLContains(t, yaml, "roleRef:")
+		assertYAMLContains(t, yaml, "subjects:")
+	})
+
+	t.Run("clusterrolebinding contains roleRef and subjects", func(t *testing.T) {
+		yaml := runExample(t, binaryPath, "clusterrolebinding")
+		assertYAMLContains(t, yaml, "roleRef:")
+		assertYAMLContains(t, yaml, "subjects:")
+	})
+
+	t.Run("poddisruptionbudget contains disruption settings", func(t *testing.T) {
+		yaml := runExample(t, binaryPath, "poddisruptionbudget")
+		if !strings.Contains(yaml, "minAvailable:") && !strings.Contains(yaml, "maxUnavailable:") {
+			t.Errorf("PodDisruptionBudget YAML missing both minAvailable and maxUnavailable\ngot:\n%s", yaml)
+		}
+	})
+
+	t.Run("resourcequota contains hard", func(t *testing.T) {
+		yaml := runExample(t, binaryPath, "resourcequota")
+		assertYAMLContains(t, yaml, "hard:")
+	})
+
+	t.Run("limitrange contains limits", func(t *testing.T) {
+		yaml := runExample(t, binaryPath, "limitrange")
+		assertYAMLContains(t, yaml, "limits:")
+	})
+
+	t.Run("persistentvolume contains capacity and hostPath", func(t *testing.T) {
+		yaml := runExample(t, binaryPath, "persistentvolume")
+		assertYAMLContains(t, yaml, "capacity:")
+		assertYAMLContains(t, yaml, "hostPath:")
+	})
+
+	t.Run("storageclass contains provisioner", func(t *testing.T) {
+		yaml := runExample(t, binaryPath, "storageclass")
+		assertYAMLContains(t, yaml, "provisioner:")
+	})
+
+	t.Run("priorityclass contains value", func(t *testing.T) {
+		yaml := runExample(t, binaryPath, "priorityclass")
+		assertYAMLContains(t, yaml, "value:")
+	})
+
+	t.Run("runtimeclass contains handler", func(t *testing.T) {
+		yaml := runExample(t, binaryPath, "runtimeclass")
+		assertYAMLContains(t, yaml, "handler:")
+	})
+
+	t.Run("validatingwebhookconfiguration contains webhooks and admissionReviewVersions", func(t *testing.T) {
+		yaml := runExample(t, binaryPath, "validatingwebhookconfiguration")
+		assertYAMLContains(t, yaml, "webhooks:")
+		assertYAMLContains(t, yaml, "admissionReviewVersions:")
+	})
+
+	t.Run("mutatingwebhookconfiguration contains webhooks and admissionReviewVersions", func(t *testing.T) {
+		yaml := runExample(t, binaryPath, "mutatingwebhookconfiguration")
+		assertYAMLContains(t, yaml, "webhooks:")
+		assertYAMLContains(t, yaml, "admissionReviewVersions:")
+	})
+
+	t.Run("customresourcedefinition contains group names and versions", func(t *testing.T) {
+		yaml := runExample(t, binaryPath, "customresourcedefinition")
+		assertYAMLContains(t, yaml, "group:")
+		assertYAMLContains(t, yaml, "names:")
+		assertYAMLContains(t, yaml, "versions:")
+	})
+
+	t.Run("ingressclass contains controller", func(t *testing.T) {
+		yaml := runExample(t, binaryPath, "ingressclass")
+		assertYAMLContains(t, yaml, "controller:")
 	})
 }
 
@@ -606,7 +738,7 @@ func TestOpenAPISpecResilience(t *testing.T) {
 		}
 	})
 
-	t.Run("list shows at least the 13 core types", func(t *testing.T) {
+	t.Run("list shows at least the core types", func(t *testing.T) {
 		cmd := exec.Command(binaryPath, "--list")
 		out, err := cmd.Output()
 		if err != nil {
