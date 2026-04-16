@@ -19,29 +19,29 @@ spec:
         matchLabels:
           os: darwin
           arch: amd64
-      {{addURIAndSha "https://github.com/ogormans-deptstack/kubectl-example/releases/download/{{ .TagName }}/kubectl-example_{{ .TagName }}_darwin_amd64.tar.gz" .TagName }}
+      {{addURIAndSha "https://github.com/ogormans-deptstack/kubectl-example/releases/download/{{ .TagName }}/kubectl-example_{{ .TagName }}_darwin_amd64.tar.gz" .TagName | indent 6 }}
       bin: kubectl-example
     - selector:
         matchLabels:
           os: darwin
           arch: arm64
-      {{addURIAndSha "https://github.com/ogormans-deptstack/kubectl-example/releases/download/{{ .TagName }}/kubectl-example_{{ .TagName }}_darwin_arm64.tar.gz" .TagName }}
+      {{addURIAndSha "https://github.com/ogormans-deptstack/kubectl-example/releases/download/{{ .TagName }}/kubectl-example_{{ .TagName }}_darwin_arm64.tar.gz" .TagName | indent 6 }}
       bin: kubectl-example
     - selector:
         matchLabels:
           os: linux
           arch: amd64
-      {{addURIAndSha "https://github.com/ogormans-deptstack/kubectl-example/releases/download/{{ .TagName }}/kubectl-example_{{ .TagName }}_linux_amd64.tar.gz" .TagName }}
+      {{addURIAndSha "https://github.com/ogormans-deptstack/kubectl-example/releases/download/{{ .TagName }}/kubectl-example_{{ .TagName }}_linux_amd64.tar.gz" .TagName | indent 6 }}
       bin: kubectl-example
     - selector:
         matchLabels:
           os: linux
           arch: arm64
-      {{addURIAndSha "https://github.com/ogormans-deptstack/kubectl-example/releases/download/{{ .TagName }}/kubectl-example_{{ .TagName }}_linux_arm64.tar.gz" .TagName }}
+      {{addURIAndSha "https://github.com/ogormans-deptstack/kubectl-example/releases/download/{{ .TagName }}/kubectl-example_{{ .TagName }}_linux_arm64.tar.gz" .TagName | indent 6 }}
       bin: kubectl-example
     - selector:
         matchLabels:
           os: windows
           arch: amd64
-      {{addURIAndSha "https://github.com/ogormans-deptstack/kubectl-example/releases/download/{{ .TagName }}/kubectl-example_{{ .TagName }}_windows_amd64.zip" .TagName }}
+      {{addURIAndSha "https://github.com/ogormans-deptstack/kubectl-example/releases/download/{{ .TagName }}/kubectl-example_{{ .TagName }}_windows_amd64.zip" .TagName | indent 6 }}
       bin: kubectl-example.exe
