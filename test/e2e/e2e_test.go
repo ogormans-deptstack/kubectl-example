@@ -58,6 +58,34 @@ var gatewayTypes = []struct {
 	{name: "BackendTLSPolicy", getKind: "backendtlspolicy"},
 }
 
+var argoTypes = []struct {
+	name    string
+	getKind string
+}{
+	{name: "Workflow", getKind: "workflow"},
+	{name: "CronWorkflow", getKind: "cronworkflow"},
+	{name: "WorkflowTemplate", getKind: "workflowtemplate"},
+	{name: "ClusterWorkflowTemplate", getKind: "clusterworkflowtemplate"},
+}
+
+var certManagerTypes = []struct {
+	name    string
+	getKind string
+}{
+	{name: "Certificate", getKind: "certificate"},
+	{name: "Issuer", getKind: "issuer"},
+	{name: "ClusterIssuer", getKind: "clusterissuer"},
+}
+
+var crossplaneTypes = []struct {
+	name    string
+	getKind string
+}{
+	{name: "Composition", getKind: "composition"},
+	{name: "CompositeResourceDefinition", getKind: "compositeresourcedefinition"},
+	{name: "EnvironmentConfig", getKind: "environmentconfig"},
+}
+
 func TestGenerateAndCreate(t *testing.T) {
 	binaryPath := findBinary(t)
 	ensureCluster(t)
@@ -337,6 +365,230 @@ func TestGatewayAPIDiscovery(t *testing.T) {
 	})
 }
 
+func TestArgoGenerateAndCreate(t *testing.T) {
+	binaryPath := findBinary(t)
+	ensureCluster(t)
+	ensureArgoCRDs(t)
+
+	for _, rt := range argoTypes {
+		t.Run(rt.name, func(t *testing.T) {
+			cleanupResource(t, rt.getKind, strings.ToLower(rt.name))
+
+			t.Run("generates valid YAML", func(t *testing.T) {
+				yaml := runExample(t, binaryPath, rt.name)
+				assertValidYAML(t, yaml)
+			})
+
+			t.Run("server dry-run validates", func(t *testing.T) {
+				yaml := runExample(t, binaryPath, rt.name)
+				kubectlDryRun(t, yaml)
+			})
+
+			t.Run("creates resource via kubectl apply", func(t *testing.T) {
+				yaml := runExample(t, binaryPath, rt.name)
+				kubectlApply(t, yaml)
+				assertResourceExists(t, rt.getKind)
+			})
+		})
+	}
+}
+
+func TestArgoSpecNuances(t *testing.T) {
+	binaryPath := findBinary(t)
+	ensureCluster(t)
+	ensureArgoCRDs(t)
+
+	t.Run("Workflow includes templates array", func(t *testing.T) {
+		yaml := runExample(t, binaryPath, "Workflow")
+		assertYAMLContains(t, yaml, "templates:")
+	})
+
+	t.Run("Workflow has correct apiVersion", func(t *testing.T) {
+		yaml := runExample(t, binaryPath, "Workflow")
+		assertYAMLContains(t, yaml, "apiVersion: argoproj.io/")
+	})
+
+	t.Run("CronWorkflow includes schedule", func(t *testing.T) {
+		yaml := runExample(t, binaryPath, "CronWorkflow")
+		assertYAMLContains(t, yaml, "schedule:")
+	})
+
+	t.Run("WorkflowTemplate includes templates", func(t *testing.T) {
+		yaml := runExample(t, binaryPath, "WorkflowTemplate")
+		assertYAMLContains(t, yaml, "templates:")
+	})
+}
+
+func TestArgoDiscovery(t *testing.T) {
+	binaryPath := findBinary(t)
+	ensureCluster(t)
+	ensureArgoCRDs(t)
+
+	t.Run("list includes Argo types", func(t *testing.T) {
+		cmd := exec.Command(binaryPath, "--list")
+		out, err := cmd.Output()
+		if err != nil {
+			t.Fatalf("--list failed: %v", err)
+		}
+		output := strings.ToLower(string(out))
+		for _, rt := range argoTypes {
+			if !strings.Contains(output, strings.ToLower(rt.name)) {
+				t.Errorf("--list output missing Argo type: %s\ngot:\n%s", rt.name, string(out))
+			}
+		}
+	})
+}
+
+func TestCertManagerGenerateAndCreate(t *testing.T) {
+	binaryPath := findBinary(t)
+	ensureCluster(t)
+	ensureCertManagerCRDs(t)
+
+	for _, rt := range certManagerTypes {
+		t.Run(rt.name, func(t *testing.T) {
+			cleanupResource(t, rt.getKind, strings.ToLower(rt.name))
+
+			t.Run("generates valid YAML", func(t *testing.T) {
+				yaml := runExample(t, binaryPath, rt.name)
+				assertValidYAML(t, yaml)
+			})
+
+			t.Run("server dry-run validates", func(t *testing.T) {
+				yaml := runExample(t, binaryPath, rt.name)
+				kubectlDryRun(t, yaml)
+			})
+
+			t.Run("creates resource via kubectl apply", func(t *testing.T) {
+				yaml := runExample(t, binaryPath, rt.name)
+				kubectlApply(t, yaml)
+				assertResourceExists(t, rt.getKind)
+			})
+		})
+	}
+}
+
+func TestCertManagerSpecNuances(t *testing.T) {
+	binaryPath := findBinary(t)
+	ensureCluster(t)
+	ensureCertManagerCRDs(t)
+
+	t.Run("Certificate includes secretName", func(t *testing.T) {
+		yaml := runExample(t, binaryPath, "Certificate")
+		assertYAMLContains(t, yaml, "secretName:")
+	})
+
+	t.Run("Certificate includes issuerRef", func(t *testing.T) {
+		yaml := runExample(t, binaryPath, "Certificate")
+		assertYAMLContains(t, yaml, "issuerRef:")
+	})
+
+	t.Run("Certificate has correct apiVersion", func(t *testing.T) {
+		yaml := runExample(t, binaryPath, "Certificate")
+		assertYAMLContains(t, yaml, "apiVersion: cert-manager.io/")
+	})
+
+	t.Run("Issuer has correct apiVersion", func(t *testing.T) {
+		yaml := runExample(t, binaryPath, "Issuer")
+		assertYAMLContains(t, yaml, "apiVersion: cert-manager.io/")
+	})
+
+	t.Run("ClusterIssuer has correct apiVersion", func(t *testing.T) {
+		yaml := runExample(t, binaryPath, "ClusterIssuer")
+		assertYAMLContains(t, yaml, "apiVersion: cert-manager.io/")
+	})
+}
+
+func TestCertManagerDiscovery(t *testing.T) {
+	binaryPath := findBinary(t)
+	ensureCluster(t)
+	ensureCertManagerCRDs(t)
+
+	t.Run("list includes cert-manager types", func(t *testing.T) {
+		cmd := exec.Command(binaryPath, "--list")
+		out, err := cmd.Output()
+		if err != nil {
+			t.Fatalf("--list failed: %v", err)
+		}
+		output := strings.ToLower(string(out))
+		for _, rt := range certManagerTypes {
+			if !strings.Contains(output, strings.ToLower(rt.name)) {
+				t.Errorf("--list output missing cert-manager type: %s\ngot:\n%s", rt.name, string(out))
+			}
+		}
+	})
+}
+
+func TestCrossplaneGenerateAndCreate(t *testing.T) {
+	binaryPath := findBinary(t)
+	ensureCluster(t)
+	ensureCrossplaneCRDs(t)
+
+	for _, rt := range crossplaneTypes {
+		t.Run(rt.name, func(t *testing.T) {
+			cleanupResource(t, rt.getKind, strings.ToLower(rt.name))
+
+			t.Run("generates valid YAML", func(t *testing.T) {
+				yaml := runExample(t, binaryPath, rt.name)
+				assertValidYAML(t, yaml)
+			})
+
+			t.Run("server dry-run validates", func(t *testing.T) {
+				yaml := runExample(t, binaryPath, rt.name)
+				kubectlDryRun(t, yaml)
+			})
+
+			t.Run("creates resource via kubectl apply", func(t *testing.T) {
+				yaml := runExample(t, binaryPath, rt.name)
+				kubectlApply(t, yaml)
+				assertResourceExists(t, rt.getKind)
+			})
+		})
+	}
+}
+
+func TestCrossplaneSpecNuances(t *testing.T) {
+	binaryPath := findBinary(t)
+	ensureCluster(t)
+	ensureCrossplaneCRDs(t)
+
+	t.Run("Composition has correct apiVersion", func(t *testing.T) {
+		yaml := runExample(t, binaryPath, "Composition")
+		assertYAMLContains(t, yaml, "apiVersion: apiextensions.crossplane.io/")
+	})
+
+	t.Run("CompositeResourceDefinition has correct apiVersion", func(t *testing.T) {
+		yaml := runExample(t, binaryPath, "CompositeResourceDefinition")
+		assertYAMLContains(t, yaml, "apiVersion: apiextensions.crossplane.io/")
+	})
+
+	t.Run("Composition includes resources or pipeline", func(t *testing.T) {
+		yaml := runExample(t, binaryPath, "Composition")
+		if !strings.Contains(yaml, "resources:") && !strings.Contains(yaml, "pipeline:") {
+			t.Errorf("Composition YAML missing both resources and pipeline fields\ngot:\n%s", yaml)
+		}
+	})
+}
+
+func TestCrossplaneDiscovery(t *testing.T) {
+	binaryPath := findBinary(t)
+	ensureCluster(t)
+	ensureCrossplaneCRDs(t)
+
+	t.Run("list includes Crossplane types", func(t *testing.T) {
+		cmd := exec.Command(binaryPath, "--list")
+		out, err := cmd.Output()
+		if err != nil {
+			t.Fatalf("--list failed: %v", err)
+		}
+		output := strings.ToLower(string(out))
+		for _, rt := range crossplaneTypes {
+			if !strings.Contains(output, strings.ToLower(rt.name)) {
+				t.Errorf("--list output missing Crossplane type: %s\ngot:\n%s", rt.name, string(out))
+			}
+		}
+	})
+}
+
 func TestOpenAPISpecResilience(t *testing.T) {
 	binaryPath := findBinary(t)
 	ensureCluster(t)
@@ -408,6 +660,36 @@ func ensureGatewayCRDs(t *testing.T) {
 	cmd := exec.CommandContext(ctx, "kubectl", "get", "crd", "httproutes.gateway.networking.k8s.io")
 	if err := cmd.Run(); err != nil {
 		t.Skip("Gateway API CRDs not installed; install with: kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.3.0/experimental-install.yaml")
+	}
+}
+
+func ensureArgoCRDs(t *testing.T) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "kubectl", "get", "crd", "workflows.argoproj.io")
+	if err := cmd.Run(); err != nil {
+		t.Skip("Argo Workflows CRDs not installed; install with: kubectl apply -f https://github.com/argoproj/argo-workflows/releases/download/v4.0.4/install.yaml")
+	}
+}
+
+func ensureCertManagerCRDs(t *testing.T) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "kubectl", "get", "crd", "certificates.cert-manager.io")
+	if err := cmd.Run(); err != nil {
+		t.Skip("cert-manager CRDs not installed; install with: kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.20.2/cert-manager.crds.yaml")
+	}
+}
+
+func ensureCrossplaneCRDs(t *testing.T) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "kubectl", "get", "crd", "compositions.apiextensions.crossplane.io")
+	if err := cmd.Run(); err != nil {
+		t.Skip("Crossplane CRDs not installed; Crossplane CRDs need manual install via Helm")
 	}
 }
 
