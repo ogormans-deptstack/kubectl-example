@@ -110,6 +110,7 @@ func (g *OpenAPIGenerator) buildManifest(gvk openapi.GVK, schema map[string]any)
 		g.fixPVDefaults(spec, gvk.Kind)
 		g.fixIngressClassDefaults(spec, gvk.Kind)
 		g.fixIssuerDefaults(spec, gvk.Kind)
+		g.fixArgoDefaults(spec, gvk.Kind)
 		g.fixLimitRangeDefaults(spec, gvk.Kind)
 		g.stripNoisyFields(spec, gvk.Kind)
 		manifest.set("spec", spec)
@@ -519,6 +520,63 @@ func (g *OpenAPIGenerator) fixIssuerDefaults(spec map[string]any, kind string) {
 	delete(spec, "ca")
 	delete(spec, "vault")
 	delete(spec, "venafi")
+}
+
+func (g *OpenAPIGenerator) fixArgoDefaults(spec map[string]any, kind string) {
+	argoKinds := map[string]bool{
+		"Workflow": true, "CronWorkflow": true,
+		"WorkflowTemplate": true, "ClusterWorkflowTemplate": true,
+	}
+	if !argoKinds[kind] {
+		return
+	}
+
+	// CronWorkflow wraps the workflow spec inside spec.workflowSpec
+	target := spec
+	if kind == "CronWorkflow" {
+		if ws, ok := spec["workflowSpec"].(map[string]any); ok {
+			target = ws
+		}
+	}
+
+	fixArgoPromNames := func(m map[string]any) {
+		metrics, ok := m["metrics"].(map[string]any)
+		if !ok {
+			return
+		}
+		prom, ok := metrics["prometheus"].([]any)
+		if !ok {
+			return
+		}
+		for _, entry := range prom {
+			if p, ok := entry.(map[string]any); ok {
+				if name, ok := p["name"].(string); ok {
+					p["name"] = strings.ReplaceAll(name, "-", "_")
+				}
+			}
+		}
+	}
+
+	stripArgoTemplateFields := func(tmpl map[string]any) {
+		// data requires data.source, memoize requires memoize.cache
+		delete(tmpl, "data")
+		delete(tmpl, "memoize")
+		fixArgoPromNames(tmpl)
+	}
+
+	fixArgoPromNames(target)
+
+	if templates, ok := target["templates"].([]any); ok {
+		for _, t := range templates {
+			if tmpl, ok := t.(map[string]any); ok {
+				stripArgoTemplateFields(tmpl)
+			}
+		}
+	}
+
+	if td, ok := target["templateDefaults"].(map[string]any); ok {
+		stripArgoTemplateFields(td)
+	}
 }
 
 func (g *OpenAPIGenerator) fixLimitRangeDefaults(spec map[string]any, kind string) {
