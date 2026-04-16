@@ -7,6 +7,10 @@
 
 Generate example Kubernetes YAML manifests from your cluster's OpenAPI v3 spec.
 
+<p align="center">
+  <img src="demo.svg" alt="kubectl-generate demo" width="800">
+</p>
+
 Instead of copy-pasting from documentation or memorizing resource schemas, `kubectl-generate` reads the live OpenAPI spec from your cluster and generates valid, apply-ready YAML for any resource type -- including CRDs.
 
 ```
