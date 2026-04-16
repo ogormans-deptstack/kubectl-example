@@ -105,7 +105,6 @@ func (g *OpenAPIGenerator) buildManifest(gvk openapi.GVK, schema map[string]any)
 
 	spec := g.walkSchema(specSchema, gvk.Kind, 0)
 	if spec != nil {
-		g.applyOverrides(spec, gvk.Kind)
 		g.injectTemplateLabels(spec, name)
 		g.injectTemplateRestartPolicy(spec, gvk.Kind)
 		g.fixStrategyDefaults(spec, gvk.Kind)
@@ -118,6 +117,7 @@ func (g *OpenAPIGenerator) buildManifest(gvk openapi.GVK, schema map[string]any)
 		g.fixArgoDefaults(spec, gvk.Kind)
 		g.fixLimitRangeDefaults(spec, gvk.Kind)
 		g.stripNoisyFields(spec, gvk.Kind)
+		g.applyOverrides(spec, gvk.Kind)
 		manifest.set("spec", spec)
 	}
 
@@ -368,8 +368,67 @@ func (g *OpenAPIGenerator) applyOverrides(spec map[string]any, kind string) {
 			spec["replicas"] = parseIntOrString(v)
 		case "image":
 			g.setContainerImage(spec, v)
+		default:
+			if strings.Contains(k, ".") {
+				g.setNestedField(spec, k, v)
+			}
 		}
 	}
+}
+
+func (g *OpenAPIGenerator) setNestedField(root map[string]any, path string, value string) {
+	parts := strings.Split(path, ".")
+	if len(parts) > 1 && parts[0] == "spec" {
+		parts = parts[1:]
+	}
+
+	current := root
+	for i, part := range parts {
+		if i == len(parts)-1 {
+			current[part] = parseIntOrString(value)
+			return
+		}
+
+		idx, fieldName, hasIndex := parseArrayIndex(part)
+		if hasIndex {
+			arr, ok := current[fieldName].([]any)
+			if !ok || idx >= len(arr) {
+				return
+			}
+			next, ok := arr[idx].(map[string]any)
+			if !ok {
+				return
+			}
+			current = next
+		} else {
+			next, ok := current[part].(map[string]any)
+			if !ok {
+				return
+			}
+			current = next
+		}
+	}
+}
+
+func parseArrayIndex(part string) (int, string, bool) {
+	openBracket := strings.Index(part, "[")
+	if openBracket < 0 {
+		return 0, "", false
+	}
+	closeBracket := strings.Index(part, "]")
+	if closeBracket < 0 {
+		return 0, "", false
+	}
+	fieldName := part[:openBracket]
+	idxStr := part[openBracket+1 : closeBracket]
+	idx := 0
+	for _, ch := range idxStr {
+		if ch < '0' || ch > '9' {
+			return 0, "", false
+		}
+		idx = idx*10 + int(ch-'0')
+	}
+	return idx, fieldName, true
 }
 
 func (g *OpenAPIGenerator) setContainerImage(spec map[string]any, image string) {

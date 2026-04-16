@@ -1218,6 +1218,49 @@ func TestOverridePriority(t *testing.T) {
 	})
 }
 
+func TestDotPathOverrides(t *testing.T) {
+	gen := newTestGenerator(t)
+
+	genYAML := func(t *testing.T, kind string, overrides map[string]string) string {
+		t.Helper()
+		var buf bytes.Buffer
+		if err := gen.Generate(kind, overrides, &buf); err != nil {
+			t.Fatalf("Generate(%s) failed: %v", kind, err)
+		}
+		return buf.String()
+	}
+
+	t.Run("spec.restartPolicy override on Pod", func(t *testing.T) {
+		yaml := genYAML(t, "Pod", map[string]string{"spec.restartPolicy": "Never"})
+		assertContains(t, yaml, "restartPolicy: Never")
+	})
+
+	t.Run("spec.template.spec.restartPolicy override on Job wins over post-processor", func(t *testing.T) {
+		yaml := genYAML(t, "Job", map[string]string{"spec.template.spec.restartPolicy": "OnFailure"})
+		assertContains(t, yaml, "restartPolicy: OnFailure")
+		assertNotContains(t, yaml, "restartPolicy: Never")
+	})
+
+	t.Run("spec.replicas dot-path form works", func(t *testing.T) {
+		yaml := genYAML(t, "Deployment", map[string]string{"spec.replicas": "7"})
+		assertContains(t, yaml, "replicas: 7")
+	})
+
+	t.Run("spec.template.spec.containers[0].image dot-path override", func(t *testing.T) {
+		yaml := genYAML(t, "Deployment", map[string]string{
+			"spec.template.spec.containers[0].image": "custom:v3",
+		})
+		assertContains(t, yaml, `image: "custom:v3"`)
+	})
+
+	t.Run("dot-path overrides win over post-processors", func(t *testing.T) {
+		yaml := genYAML(t, "Deployment", map[string]string{
+			"spec.strategy.type": "Recreate",
+		})
+		assertContains(t, yaml, "type: Recreate")
+	})
+}
+
 func newTestGenerator(t *testing.T) ResourceGenerator {
 	t.Helper()
 	doc := loadMergedFixture(t)
