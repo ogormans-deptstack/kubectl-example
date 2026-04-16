@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ogormans-deptstack/kubectl-example/pkg/openapi"
+	"github.com/ogormans-deptstack/kubectl-generate/pkg/openapi"
 )
 
 func TestForResource(t *testing.T) {

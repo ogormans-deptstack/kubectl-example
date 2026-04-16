@@ -7,8 +7,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/ogormans-deptstack/kubectl-example/pkg/defaults"
-	"github.com/ogormans-deptstack/kubectl-example/pkg/openapi"
+	"github.com/ogormans-deptstack/kubectl-generate/pkg/defaults"
+	"github.com/ogormans-deptstack/kubectl-generate/pkg/openapi"
 )
 
 type OpenAPIGenerator struct {

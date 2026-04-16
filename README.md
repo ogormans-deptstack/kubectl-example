@@ -1,11 +1,11 @@
-# kubectl-example
+# kubectl-generate
 
 Generate example Kubernetes YAML manifests from your cluster's OpenAPI v3 spec.
 
-Instead of copy-pasting from documentation or memorizing resource schemas, `kubectl-example` reads the live OpenAPI spec from your cluster and generates valid, apply-ready YAML for any resource type -- including CRDs.
+Instead of copy-pasting from documentation or memorizing resource schemas, `kubectl-generate` reads the live OpenAPI spec from your cluster and generates valid, apply-ready YAML for any resource type -- including CRDs.
 
 ```
-$ kubectl example Deployment --name=web --image=myapp:v2 --replicas=5
+$ kubectl generate Deployment --name=web --image=myapp:v2 --replicas=5
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -52,43 +52,43 @@ spec:
 ### From source
 
 ```bash
-git clone https://github.com/ogormans-deptstack/kubectl-example.git
-cd kubectl-example
+git clone https://github.com/ogormans-deptstack/kubectl-generate.git
+cd kubectl-generate
 make install
 ```
 
-This builds the binary and copies it to `$GOPATH/bin/kubectl-example`. kubectl discovers it automatically via the `kubectl-` prefix.
+This builds the binary and copies it to `$GOPATH/bin/kubectl-generate`. kubectl discovers it automatically via the `kubectl-` prefix.
 
 ### Verify
 
 ```bash
 kubectl plugin list
-# Should show: kubectl-example
+# Should show: kubectl-generate
 
-kubectl example --version
+kubectl generate --version
 ```
 
 ## Usage
 
 ```bash
 # Generate a Deployment
-kubectl example Deployment
+kubectl generate Deployment
 
 # Generate with overrides
-kubectl example Deployment --name=web --image=myapp:v2 --replicas=3
+kubectl generate Deployment --name=web --image=myapp:v2 --replicas=3
 
 # Generate and apply
-kubectl example Service --name=web | kubectl create -f -
+kubectl generate Service --name=web | kubectl create -f -
 
 # Set arbitrary fields
-kubectl example StatefulSet --set serviceName=my-svc
+kubectl generate StatefulSet --set serviceName=my-svc
 
 # List all available resource types
-kubectl example --list
+kubectl generate --list
 
 # Generate a CRD (must be installed in the cluster)
-kubectl example CronTab
-kubectl example HTTPRoute
+kubectl generate CronTab
+kubectl generate HTTPRoute
 ```
 
 ### Flags
@@ -161,7 +161,7 @@ CRDs tested: CronTab (custom), Gateway API (HTTPRoute, Gateway, GatewayClass, GR
 ## Architecture
 
 ```
-cmd/kubectl-example/
+cmd/kubectl-generate/
   main.go              Cobra CLI, flag parsing, override collection
 
 pkg/
@@ -244,14 +244,14 @@ This project is in active development, presented at the [sig-cli bi-weekly meeti
 | 3 | Expanded CRD coverage | Argo Workflows, Crossplane, Cert-Manager, Istio -- validate heuristics against real-world CRDs |
 | 4 | CLI polish | Descriptive errors for missing required flags, fuzzy matching for flag suggestions, output format options |
 | 5 | KEP progression | Target `kubectl alpha example` for v1.37, code moves to `staging/src/k8s.io/kubectl/` |
-| 6 | Beta promotion | `kubectl example` as a top-level subcommand, based on alpha feedback |
+| 6 | Beta promotion | `kubectl generate` as a top-level subcommand, based on alpha feedback |
 
 ### Kubernetes Release Integration
 
 The path from standalone plugin to built-in kubectl subcommand follows the standard KEP graduation process, similar to how `kubectl debug` ([KEP-1441](https://github.com/kubernetes/enhancements/tree/master/keps/sig-cli/1441-kubectl-debug)) and `kubectl diff` ([KEP-491](https://github.com/kubernetes/enhancements/tree/master/keps/sig-cli/491-kubectl-diff)) progressed:
 
 - **Alpha**: Command gated behind `kubectl alpha example`. Requires KEP at `implementable` status, approved by sig-cli leads, and hitting the Enhancements Freeze for the target release.
-- **Beta**: Promoted to top-level `kubectl example` after at least one release cycle of alpha feedback, full test coverage, and docs on kubernetes.io.
+- **Beta**: Promoted to top-level `kubectl generate` after at least one release cycle of alpha feedback, full test coverage, and docs on kubernetes.io.
 - **GA**: Stable after 2+ release cycles at beta, demonstrated real-world usage, and conformance tests where applicable.
 
 For reference, `kubectl debug` took roughly 3 years from KEP to GA (v1.18 alpha to v1.30 stable). `kubectl diff` took about 1.5 years (v1.9 to v1.13). Timeline depends on feedback cycles and community adoption.

@@ -1,4 +1,4 @@
-module github.com/ogormans-deptstack/kubectl-example
+module github.com/ogormans-deptstack/kubectl-generate
 
 go 1.25.0
 

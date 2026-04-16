@@ -1,8 +1,8 @@
-# kubectl-example -- Agent Context
+# kubectl-generate -- Agent Context
 
 ## Project
 
-kubectl plugin that generates example YAML from OpenAPI v3 specs. Go module at `github.com/ogormans-deptstack/kubectl-example`. Apache 2.0.
+kubectl plugin that generates example YAML from OpenAPI v3 specs. Go module at `github.com/ogormans-deptstack/kubectl-generate`. Apache 2.0.
 
 ## Conventions
 
@@ -11,13 +11,13 @@ kubectl plugin that generates example YAML from OpenAPI v3 specs. Go module at `
 - Factory pattern: `ensureXXXCRD()` helpers for CRD test groups
 - No `as any` / `@ts-ignore` equivalents -- no lint suppression
 - Commit messages: no `Fixes #N` or auto-close keywords (Prow flags these)
-- Use SSH for git push: `git@github.com:ogormans-deptstack/kubectl-example.git`
+- Use SSH for git push: `git@github.com:ogormans-deptstack/kubectl-generate.git`
 
 ## Key Paths
 
 | What | Where |
 |------|-------|
-| CLI entry | `cmd/kubectl-example/main.go` |
+| CLI entry | `cmd/kubectl-generate/main.go` |
 | Generator | `pkg/generator/openapi_generator.go` |
 | YAML emitter | `pkg/generator/yaml.go` |
 | Schema fetcher | `pkg/openapi/fetcher.go` |
@@ -44,7 +44,7 @@ kubectl plugin that generates example YAML from OpenAPI v3 specs. Go module at `
 
 Following up from the sig-cli bi-weekly discussion on April 16 -- thanks @ardaguclu for the invite and the feedback.
 
-Working prototype is at https://github.com/ogormans-deptstack/kubectl-example (v0.1.0 released, available via krew). It reads the cluster's OpenAPI v3 spec and generates apply-ready YAML for any resource type, including CRDs.
+Working prototype is at https://github.com/ogormans-deptstack/kubectl-generate (v0.1.0 released, available via krew). It reads the cluster's OpenAPI v3 spec and generates apply-ready YAML for any resource type, including CRDs.
 
 **How it works:**
 
@@ -52,7 +52,7 @@ The plugin connects via the discovery API, fetches all OpenAPI v3 group-version 
 
 **Demo output:**
 
-$ kubectl example Deployment --name=web --image=myapp:v2 --replicas=5
+$ kubectl generate Deployment --name=web --image=myapp:v2 --replicas=5
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -91,7 +91,7 @@ spec:
 - Override flags: `--name`, `--image`, `--replicas`, `--set key=value`
 - ~266 unit tests, e2e suite against kind cluster
 - CI with golangci-lint v2, Go 1.25/1.26 matrix, e2e on kind v1.33.0
-- Distributed via krew (`kubectl krew install example`) and GitHub releases
+- Distributed via krew (`kubectl krew install generate`) and GitHub releases
 
 **Next steps toward v1.37 alpha:**
 
@@ -107,31 +107,31 @@ cc @soltysh @eddiezane
 - [ ] CI green on latest main
 - [ ] Re-read for AI tells -- must read as a human engineer wrote it
 
-## Banked: Rename kubectl-example → kubectl-generate
+## Banked: Rename kubectl-generate → kubectl-generate
 
 **Approach: Rename GitHub repo in-place (Option A)**
 
 GitHub auto-redirects old URLs. Keeps issues, milestones, release history.
 
 ### Why rename
-- krew-index already has `example` plugin (talos-labs/kubectl-example, v1.2.1)
+- krew-index already has `example` plugin (talos-labs/kubectl-generate, v1.2.1)
 - "generate" is clear, available (no krew plugin, no kubectl built-in, no competing repos)
 - Differentiates our OpenAPI-driven approach from the static YAML approach
 
 ### Steps (single session)
-1. Rename GitHub repo: `kubectl-example` → `kubectl-generate` (via tofu or GitHub UI)
+1. Rename GitHub repo: `kubectl-generate` → `kubectl-generate` (via tofu or GitHub UI)
 2. Update Go module path: `github.com/ogormans-deptstack/kubectl-generate`
-3. Rename directory: `cmd/kubectl-example/` → `cmd/kubectl-generate/`
+3. Rename directory: `cmd/kubectl-generate/` → `cmd/kubectl-generate/`
 4. Global rename in 18 files: binary name, Cobra Use field, Makefile, .goreleaser.yaml, .krew.yaml (name: generate), e2e tests, README, AGENTS.md, .gitignore
 5. Update tofu infra: variable default, resource names, outputs
 6. `go mod tidy`, `make build`, `make test-unit`, verify green
-7. Update #5571 draft (kubectl-example → kubectl-generate everywhere)
+7. Update #5571 draft (kubectl-generate → kubectl-generate everywhere)
 8. Close krew PR #5607, submit fresh `generate` plugin after CI green
 9. Tag v0.2.0 on renamed repo
 
 ### Files to change (complete inventory)
 - `go.mod` (module path)
-- `cmd/kubectl-example/main.go` + `main_test.go` (directory + imports + Cobra Use/Example)
+- `cmd/kubectl-generate/main.go` + `main_test.go` (directory + imports + Cobra Use/Example)
 - `pkg/generator/openapi_generator.go`, `generator_test.go` (imports)
 - `pkg/flags/flags.go`, `flags_test.go` (imports)
 - `Makefile` (BINARY_NAME, GO_MODULE, build path)
@@ -140,7 +140,7 @@ GitHub auto-redirects old URLs. Keeps issues, milestones, release history.
 - `README.md` (~20 occurrences)
 - `AGENTS.md` (title, module path, SSH URL, CLI entry, usage)
 - `test/e2e/e2e_test.go` (binary path, skip messages)
-- `.gitignore` (/kubectl-example → /kubectl-generate)
+- `.gitignore` (/kubectl-generate → /kubectl-generate)
 - `infra/variables.tf`, `repository.tf`, `outputs.tf`, `branch_protection.tf`
 
 ## Banked: Argo CI Fix

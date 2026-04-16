@@ -1,5 +1,5 @@
 name: Bug Report
-description: Report a bug with kubectl-example
+description: Report a bug with kubectl-generate
 labels: ["kind/bug"]
 body:
   - type: markdown
@@ -12,7 +12,7 @@ body:
     attributes:
       label: What happened?
       description: A clear description of the bug.
-      placeholder: When I run `kubectl example Deployment`, I get...
+      placeholder: When I run `kubectl generate Deployment`, I get...
     validations:
       required: true
 
@@ -30,7 +30,7 @@ body:
       label: Steps to reproduce
       description: Minimal steps to reproduce the behavior.
       placeholder: |
-        1. Run `kubectl example ...`
+        1. Run `kubectl generate ...`
         2. Observe output
     validations:
       required: true
@@ -38,8 +38,8 @@ body:
   - type: input
     id: version
     attributes:
-      label: kubectl-example version
-      description: Output of `kubectl example --version`
+      label: kubectl-generate version
+      description: Output of `kubectl generate --version`
       placeholder: "v0.1.0"
     validations:
       required: true

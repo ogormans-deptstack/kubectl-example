@@ -5,7 +5,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        kubectl-example generates YAML for any CRD with a structural OpenAPI v3 schema.
+        kubectl-generate generates YAML for any CRD with a structural OpenAPI v3 schema.
         Use this template to request testing and validation for a specific CRD.
 
   - type: input

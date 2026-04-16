@@ -3,9 +3,9 @@ before:
   hooks:
     - go mod download
 builds:
-  - id: kubectl-example
-    main: ./cmd/kubectl-example
-    binary: kubectl-example
+  - id: kubectl-generate
+    main: ./cmd/kubectl-generate
+    binary: kubectl-generate
     env:
       - CGO_ENABLED=0
     ldflags:
@@ -23,7 +23,7 @@ builds:
 
 archives:
   - builds:
-      - kubectl-example
+      - kubectl-generate
     name_template: "{{ .ProjectName }}_{{ .Tag }}_{{ .Os }}_{{ .Arch }}"
     wrap_in_directory: false
     format: tar.gz

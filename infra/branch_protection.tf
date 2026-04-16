@@ -1,5 +1,5 @@
 resource "github_repository_ruleset" "main" {
-  repository  = github_repository.kubectl_example.name
+  repository  = github_repository.kubectl_generate.name
   name        = "main"
   target      = "branch"
   enforcement = "active"

@@ -9,8 +9,8 @@ import (
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/tools/clientcmd"
 
-	"github.com/ogormans-deptstack/kubectl-example/pkg/generator"
-	"github.com/ogormans-deptstack/kubectl-example/pkg/openapi"
+	"github.com/ogormans-deptstack/kubectl-generate/pkg/generator"
+	"github.com/ogormans-deptstack/kubectl-generate/pkg/openapi"
 )
 
 var version = "dev"
@@ -36,13 +36,13 @@ func newRootCommand() *cobra.Command {
 	var opts options
 
 	cmd := &cobra.Command{
-		Use:   "kubectl-example RESOURCE_TYPE",
+		Use:   "kubectl-generate RESOURCE_TYPE",
 		Short: "Generate example YAML manifests from the OpenAPI spec",
 		Long: `Generates example Kubernetes resource YAML from the cluster's OpenAPI v3 spec.
 The generated manifest includes sensible defaults and can be piped directly to kubectl create.`,
-		Example: `  kubectl-example pod
-  kubectl-example deployment --name=web --replicas=3 | kubectl create -f -
-  kubectl-example --list`,
+		Example: `  kubectl-generate pod
+  kubectl-generate deployment --name=web --replicas=3 | kubectl create -f -
+  kubectl-generate --list`,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		Version:       version,

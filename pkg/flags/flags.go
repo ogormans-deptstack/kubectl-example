@@ -4,7 +4,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/ogormans-deptstack/kubectl-example/pkg/openapi"
+	"github.com/ogormans-deptstack/kubectl-generate/pkg/openapi"
 )
 
 type FlagDef struct {

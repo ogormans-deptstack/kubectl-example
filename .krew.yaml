@@ -1,15 +1,15 @@
 apiVersion: krew.googlecontainertools.github.com/v1alpha2
 kind: Plugin
 metadata:
-  name: example
+  name: generate
 spec:
   version: {{ .TagName }}
-  homepage: https://github.com/ogormans-deptstack/kubectl-example
+  homepage: https://github.com/ogormans-deptstack/kubectl-generate
   shortDescription: Generate example YAML manifests from OpenAPI v3 spec
   description: |
     Generate example Kubernetes YAML manifests from your cluster's OpenAPI v3
     spec. Instead of copy-pasting from documentation or memorizing resource
-    schemas, kubectl-example reads the live OpenAPI spec and generates valid,
+    schemas, kubectl-generate reads the live OpenAPI spec and generates valid,
     apply-ready YAML for any resource type -- including CRDs.
   caveats: |
     * Requires a running cluster (reads OpenAPI v3 spec via discovery API)
@@ -19,29 +19,29 @@ spec:
         matchLabels:
           os: darwin
           arch: amd64
-      {{addURIAndSha "https://github.com/ogormans-deptstack/kubectl-example/releases/download/{{ .TagName }}/kubectl-example_{{ .TagName }}_darwin_amd64.tar.gz" .TagName | indent 6 }}
-      bin: kubectl-example
+      {{addURIAndSha "https://github.com/ogormans-deptstack/kubectl-generate/releases/download/{{ .TagName }}/kubectl-generate_{{ .TagName }}_darwin_amd64.tar.gz" .TagName | indent 6 }}
+      bin: kubectl-generate
     - selector:
         matchLabels:
           os: darwin
           arch: arm64
-      {{addURIAndSha "https://github.com/ogormans-deptstack/kubectl-example/releases/download/{{ .TagName }}/kubectl-example_{{ .TagName }}_darwin_arm64.tar.gz" .TagName | indent 6 }}
-      bin: kubectl-example
+      {{addURIAndSha "https://github.com/ogormans-deptstack/kubectl-generate/releases/download/{{ .TagName }}/kubectl-generate_{{ .TagName }}_darwin_arm64.tar.gz" .TagName | indent 6 }}
+      bin: kubectl-generate
     - selector:
         matchLabels:
           os: linux
           arch: amd64
-      {{addURIAndSha "https://github.com/ogormans-deptstack/kubectl-example/releases/download/{{ .TagName }}/kubectl-example_{{ .TagName }}_linux_amd64.tar.gz" .TagName | indent 6 }}
-      bin: kubectl-example
+      {{addURIAndSha "https://github.com/ogormans-deptstack/kubectl-generate/releases/download/{{ .TagName }}/kubectl-generate_{{ .TagName }}_linux_amd64.tar.gz" .TagName | indent 6 }}
+      bin: kubectl-generate
     - selector:
         matchLabels:
           os: linux
           arch: arm64
-      {{addURIAndSha "https://github.com/ogormans-deptstack/kubectl-example/releases/download/{{ .TagName }}/kubectl-example_{{ .TagName }}_linux_arm64.tar.gz" .TagName | indent 6 }}
-      bin: kubectl-example
+      {{addURIAndSha "https://github.com/ogormans-deptstack/kubectl-generate/releases/download/{{ .TagName }}/kubectl-generate_{{ .TagName }}_linux_arm64.tar.gz" .TagName | indent 6 }}
+      bin: kubectl-generate
     - selector:
         matchLabels:
           os: windows
           arch: amd64
-      {{addURIAndSha "https://github.com/ogormans-deptstack/kubectl-example/releases/download/{{ .TagName }}/kubectl-example_{{ .TagName }}_windows_amd64.zip" .TagName | indent 6 }}
-      bin: kubectl-example.exe
+      {{addURIAndSha "https://github.com/ogormans-deptstack/kubectl-generate/releases/download/{{ .TagName }}/kubectl-generate_{{ .TagName }}_windows_amd64.zip" .TagName | indent 6 }}
+      bin: kubectl-generate.exe

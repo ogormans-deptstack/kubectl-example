@@ -755,11 +755,11 @@ func TestOpenAPISpecResilience(t *testing.T) {
 
 func findBinary(t *testing.T) string {
 	t.Helper()
-	path := "../../bin/kubectl-example"
+	path := "../../bin/kubectl-generate"
 	if _, err := exec.LookPath(path); err != nil {
-		path = "kubectl-example"
+		path = "kubectl-generate"
 		if _, err := exec.LookPath(path); err != nil {
-			t.Skip("kubectl-example binary not found; run 'make build' first")
+			t.Skip("kubectl-generate binary not found; run 'make build' first")
 		}
 	}
 	return path
@@ -833,7 +833,7 @@ func runExample(t *testing.T, binary string, resourceType string, extraArgs ...s
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
-		t.Fatalf("kubectl-example %s failed: %v\nstderr: %s", resourceType, err, stderr.String())
+		t.Fatalf("kubectl-generate %s failed: %v\nstderr: %s", resourceType, err, stderr.String())
 	}
 	return stdout.String()
 }

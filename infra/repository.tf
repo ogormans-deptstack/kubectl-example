@@ -1,4 +1,4 @@
-resource "github_repository" "kubectl_example" {
+resource "github_repository" "kubectl_generate" {
   name        = var.repo_name
   description = "Generate example Kubernetes YAML manifests from your cluster's OpenAPI v3 spec"
   visibility  = "public"

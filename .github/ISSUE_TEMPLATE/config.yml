@@ -8,4 +8,4 @@ contact_links:
     about: Ask questions on the Kubernetes discussion forum
   - name: KEP Tracking Issue
     url: https://github.com/kubernetes/enhancements/issues/5571
-    about: Track the upstream KEP for kubectl example
+    about: Track the upstream KEP for kubectl generate
