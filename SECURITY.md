@@ -6,7 +6,7 @@ If you discover a security vulnerability in kubectl-generate, please report it r
 
 **Do not open a public GitHub issue for security vulnerabilities.**
 
-Instead, email the maintainers directly at the addresses listed in [CODEOWNERS](CODEOWNERS), or use [GitHub's private vulnerability reporting](https://github.com/ogormans-deptstack/kubectl-generate/security/advisories/new).
+Instead, email the maintainers directly at the addresses listed in [CODEOWNERS](CODEOWNERS), or use [GitHub's private vulnerability reporting](https://github.com/ogormans-deptstack/kubectl-schemagen/security/advisories/new).
 
 ### What to Include
 

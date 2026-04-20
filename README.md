@@ -1,9 +1,9 @@
 # kubectl-generate
 
-[![CI](https://github.com/ogormans-deptstack/kubectl-generate/actions/workflows/ci.yml/badge.svg)](https://github.com/ogormans-deptstack/kubectl-generate/actions/workflows/ci.yml)
-[![Go Report Card](https://goreportcard.com/badge/github.com/ogormans-deptstack/kubectl-generate)](https://goreportcard.com/report/github.com/ogormans-deptstack/kubectl-generate)
-[![GitHub Release](https://img.shields.io/github/v/release/ogormans-deptstack/kubectl-generate)](https://github.com/ogormans-deptstack/kubectl-generate/releases)
-[![License](https://img.shields.io/github/license/ogormans-deptstack/kubectl-generate)](LICENSE)
+[![CI](https://github.com/ogormans-deptstack/kubectl-schemagen/actions/workflows/ci.yml/badge.svg)](https://github.com/ogormans-deptstack/kubectl-schemagen/actions/workflows/ci.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/ogormans-deptstack/kubectl-schemagen)](https://goreportcard.com/report/github.com/ogormans-deptstack/kubectl-schemagen)
+[![GitHub Release](https://img.shields.io/github/v/release/ogormans-deptstack/kubectl-schemagen)](https://github.com/ogormans-deptstack/kubectl-schemagen/releases)
+[![License](https://img.shields.io/github/license/ogormans-deptstack/kubectl-schemagen)](LICENSE)
 
 Generate example Kubernetes YAML manifests from your cluster's OpenAPI v3 spec.
 
@@ -61,7 +61,7 @@ spec:
 ### From source
 
 ```bash
-git clone https://github.com/ogormans-deptstack/kubectl-generate.git
+git clone https://github.com/ogormans-deptstack/kubectl-schemagen.git
 cd kubectl-generate
 make install
 ```

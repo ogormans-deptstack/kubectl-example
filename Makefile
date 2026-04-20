@@ -1,6 +1,6 @@
 BINARY_NAME := kubectl-schemagen
 BUILD_DIR := bin
-GO_MODULE := github.com/ogormans-deptstack/kubectl-generate
+GO_MODULE := github.com/ogormans-deptstack/kubectl-schemagen
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 LDFLAGS := -ldflags "-X main.version=$(VERSION)"
 

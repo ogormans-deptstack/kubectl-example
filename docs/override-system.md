@@ -55,7 +55,7 @@ Prior to v0.2.1, `applyOverrides()` ran before post-processors. This meant post-
 kubectl generate Job --set spec.template.spec.restartPolicy=OnFailure
 ```
 
-Fixed by moving `applyOverrides()` to run after all post-processors. See [#3](https://github.com/ogormans-deptstack/kubectl-generate/issues/3).
+Fixed by moving `applyOverrides()` to run after all post-processors. See [#3](https://github.com/ogormans-deptstack/kubectl-schemagen/issues/3).
 
 ## Limitations
 

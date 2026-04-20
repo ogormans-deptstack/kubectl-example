@@ -9,8 +9,8 @@ import (
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/tools/clientcmd"
 
-	"github.com/ogormans-deptstack/kubectl-generate/pkg/generator"
-	"github.com/ogormans-deptstack/kubectl-generate/pkg/openapi"
+	"github.com/ogormans-deptstack/kubectl-schemagen/pkg/generator"
+	"github.com/ogormans-deptstack/kubectl-schemagen/pkg/openapi"
 )
 
 var version = "dev"

@@ -6,7 +6,7 @@ import (
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/tools/clientcmd"
 
-	"github.com/ogormans-deptstack/kubectl-generate/pkg/openapi"
+	"github.com/ogormans-deptstack/kubectl-schemagen/pkg/openapi"
 )
 
 // LoadClusterDoc builds the OpenAPI document from the cluster's discovery API.

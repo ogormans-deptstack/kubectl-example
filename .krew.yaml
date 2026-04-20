@@ -4,7 +4,7 @@ metadata:
   name: generate
 spec:
   version: {{ .TagName }}
-  homepage: https://github.com/ogormans-deptstack/kubectl-generate
+  homepage: https://github.com/ogormans-deptstack/kubectl-schemagen
   shortDescription: Generate example YAML manifests from OpenAPI v3 spec
   description: |
     Generate example Kubernetes YAML manifests from your cluster's OpenAPI v3
@@ -19,29 +19,29 @@ spec:
         matchLabels:
           os: darwin
           arch: amd64
-      {{addURIAndSha "https://github.com/ogormans-deptstack/kubectl-generate/releases/download/{{ .TagName }}/kubectl-generate_{{ .TagName }}_darwin_amd64.tar.gz" .TagName | indent 6 }}
+      {{addURIAndSha "https://github.com/ogormans-deptstack/kubectl-schemagen/releases/download/{{ .TagName }}/kubectl-generate_{{ .TagName }}_darwin_amd64.tar.gz" .TagName | indent 6 }}
       bin: kubectl-generate
     - selector:
         matchLabels:
           os: darwin
           arch: arm64
-      {{addURIAndSha "https://github.com/ogormans-deptstack/kubectl-generate/releases/download/{{ .TagName }}/kubectl-generate_{{ .TagName }}_darwin_arm64.tar.gz" .TagName | indent 6 }}
+      {{addURIAndSha "https://github.com/ogormans-deptstack/kubectl-schemagen/releases/download/{{ .TagName }}/kubectl-generate_{{ .TagName }}_darwin_arm64.tar.gz" .TagName | indent 6 }}
       bin: kubectl-generate
     - selector:
         matchLabels:
           os: linux
           arch: amd64
-      {{addURIAndSha "https://github.com/ogormans-deptstack/kubectl-generate/releases/download/{{ .TagName }}/kubectl-generate_{{ .TagName }}_linux_amd64.tar.gz" .TagName | indent 6 }}
+      {{addURIAndSha "https://github.com/ogormans-deptstack/kubectl-schemagen/releases/download/{{ .TagName }}/kubectl-generate_{{ .TagName }}_linux_amd64.tar.gz" .TagName | indent 6 }}
       bin: kubectl-generate
     - selector:
         matchLabels:
           os: linux
           arch: arm64
-      {{addURIAndSha "https://github.com/ogormans-deptstack/kubectl-generate/releases/download/{{ .TagName }}/kubectl-generate_{{ .TagName }}_linux_arm64.tar.gz" .TagName | indent 6 }}
+      {{addURIAndSha "https://github.com/ogormans-deptstack/kubectl-schemagen/releases/download/{{ .TagName }}/kubectl-generate_{{ .TagName }}_linux_arm64.tar.gz" .TagName | indent 6 }}
       bin: kubectl-generate
     - selector:
         matchLabels:
           os: windows
           arch: amd64
-      {{addURIAndSha "https://github.com/ogormans-deptstack/kubectl-generate/releases/download/{{ .TagName }}/kubectl-generate_{{ .TagName }}_windows_amd64.zip" .TagName | indent 6 }}
+      {{addURIAndSha "https://github.com/ogormans-deptstack/kubectl-schemagen/releases/download/{{ .TagName }}/kubectl-generate_{{ .TagName }}_windows_amd64.zip" .TagName | indent 6 }}
       bin: kubectl-generate.exe

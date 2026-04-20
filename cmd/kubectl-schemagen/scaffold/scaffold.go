@@ -6,9 +6,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/ogormans-deptstack/kubectl-generate/internal/cli"
-	"github.com/ogormans-deptstack/kubectl-generate/pkg/generator"
-	"github.com/ogormans-deptstack/kubectl-generate/pkg/scaffold"
+	"github.com/ogormans-deptstack/kubectl-schemagen/internal/cli"
+	"github.com/ogormans-deptstack/kubectl-schemagen/pkg/generator"
+	"github.com/ogormans-deptstack/kubectl-schemagen/pkg/scaffold"
 )
 
 func NewCommand() *cobra.Command {

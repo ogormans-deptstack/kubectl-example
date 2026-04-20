@@ -6,9 +6,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/ogormans-deptstack/kubectl-generate/cmd/kubectl-schemagen/manifest"
-	"github.com/ogormans-deptstack/kubectl-generate/cmd/kubectl-schemagen/migrate"
-	"github.com/ogormans-deptstack/kubectl-generate/cmd/kubectl-schemagen/scaffold"
+	"github.com/ogormans-deptstack/kubectl-schemagen/cmd/kubectl-schemagen/manifest"
+	"github.com/ogormans-deptstack/kubectl-schemagen/cmd/kubectl-schemagen/migrate"
+	"github.com/ogormans-deptstack/kubectl-schemagen/cmd/kubectl-schemagen/scaffold"
 )
 
 var version = "dev"

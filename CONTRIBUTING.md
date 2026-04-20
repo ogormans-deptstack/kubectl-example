@@ -13,7 +13,7 @@ Thank you for your interest in contributing to kubectl-generate. This document c
 ### Building
 
 ```bash
-git clone https://github.com/ogormans-deptstack/kubectl-generate.git
+git clone https://github.com/ogormans-deptstack/kubectl-schemagen.git
 cd kubectl-generate
 make build
 ```
@@ -38,7 +38,7 @@ make test-e2e
 
 ### Reporting Issues
 
-- Check [existing issues](https://github.com/ogormans-deptstack/kubectl-generate/issues) before opening a new one
+- Check [existing issues](https://github.com/ogormans-deptstack/kubectl-schemagen/issues) before opening a new one
 - Use the issue templates (bug report, feature request, CRD request)
 - Include the output of `kubectl generate --version` and your Kubernetes version
 

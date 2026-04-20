@@ -9,11 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 BUG FIXES:
 
-- Fix `--set` overrides silently overwritten by post-processors ([#3](https://github.com/ogormans-deptstack/kubectl-generate/issues/3)). `applyOverrides()` now runs after all post-processors, and supports dot-path keys (e.g. `--set spec.template.spec.restartPolicy=OnFailure`) and array indexing (e.g. `--set containers[0].image=nginx`).
+- Fix `--set` overrides silently overwritten by post-processors ([#3](https://github.com/ogormans-deptstack/kubectl-schemagen/issues/3)). `applyOverrides()` now runs after all post-processors, and supports dot-path keys (e.g. `--set spec.template.spec.restartPolicy=OnFailure`) and array indexing (e.g. `--set containers[0].image=nginx`).
 
 ENHANCEMENTS:
 
-- Add fuzzy matching for resource type suggestions ([#2](https://github.com/ogormans-deptstack/kubectl-generate/issues/2)). Typos now suggest the closest match using Levenshtein distance (e.g. `Deploymnet` suggests `Deployment`).
+- Add fuzzy matching for resource type suggestions ([#2](https://github.com/ogormans-deptstack/kubectl-schemagen/issues/2)). Typos now suggest the closest match using Levenshtein distance (e.g. `Deploymnet` suggests `Deployment`).
 
 ## v0.2.0
 
