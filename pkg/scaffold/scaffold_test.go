@@ -67,6 +67,22 @@ metadata:
 		}
 	})
 
+	t.Run("creates output directory if missing", func(t *testing.T) {
+		dir := filepath.Join(t.TempDir(), "nested", "base")
+		manifest := []byte("apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: test\n")
+
+		err := WriteKustomizeBase(dir, "configmap", manifest)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if _, err := os.Stat(filepath.Join(dir, "configmap.yaml")); os.IsNotExist(err) {
+			t.Fatal("configmap.yaml not created in new directory")
+		}
+		if _, err := os.Stat(filepath.Join(dir, "kustomization.yaml")); os.IsNotExist(err) {
+			t.Fatal("kustomization.yaml not created in new directory")
+		}
+	})
+
 	t.Run("multiple resources get separate files", func(t *testing.T) {
 		dir := t.TempDir()
 		deploy := []byte("apiVersion: apps/v1\nkind: Deployment\n")

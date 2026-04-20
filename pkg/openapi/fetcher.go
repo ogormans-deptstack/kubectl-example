@@ -3,6 +3,7 @@ package openapi
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -117,6 +118,35 @@ func (f *SchemaFetcher) FetchAll() (*Document, error) {
 		return nil, fmt.Errorf("marshal merged schemas: %w", err)
 	}
 	return ParseDocument(data)
+}
+
+func (f *SchemaFetcher) ServedGroupVersions() (map[string][]string, error) {
+	paths, err := f.client.Paths()
+	if err != nil {
+		return nil, fmt.Errorf("fetch OpenAPI paths: %w", err)
+	}
+
+	available := make(map[string][]string)
+	for pathKey := range paths {
+		group, version := parseAPIPath(pathKey)
+		if version == "" {
+			continue
+		}
+		available[group] = append(available[group], version)
+	}
+	return available, nil
+}
+
+func parseAPIPath(path string) (group, version string) {
+	parts := strings.Split(strings.Trim(path, "/"), "/")
+	switch {
+	case len(parts) == 2 && parts[0] == "api":
+		return "", parts[1]
+	case len(parts) == 3 && parts[0] == "apis":
+		return parts[1], parts[2]
+	default:
+		return "", ""
+	}
 }
 
 func resourcePathFromGV(gv schema.GroupVersion) string {

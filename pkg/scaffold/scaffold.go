@@ -8,6 +8,10 @@ import (
 )
 
 func WriteKustomizeBase(dir, resourceType string, manifest []byte) error {
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("create output directory: %w", err)
+	}
+
 	filename := strings.ToLower(resourceType) + ".yaml"
 	resourcePath := filepath.Join(dir, filename)
 

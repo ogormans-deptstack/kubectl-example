@@ -3,6 +3,7 @@ package scaffold
 import (
 	"bytes"
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -58,7 +59,7 @@ func runScaffold(resourceTypes []string, opts *cli.ManifestOptions, outputDir st
 		if err := scaffold.WriteKustomizeBase(outputDir, resourceType, buf.Bytes()); err != nil {
 			return fmt.Errorf("write scaffold for %s: %w", resourceType, err)
 		}
-		fmt.Printf("wrote %s/%s.yaml\n", outputDir, resourceType)
+		fmt.Printf("wrote %s/%s.yaml\n", outputDir, strings.ToLower(resourceType))
 	}
 
 	fmt.Printf("kustomize base written to %s/\n", outputDir)

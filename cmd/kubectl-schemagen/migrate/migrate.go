@@ -8,7 +8,6 @@ import (
 
 	"github.com/ogormans-deptstack/kubectl-schemagen/internal/cli"
 	"github.com/ogormans-deptstack/kubectl-schemagen/pkg/migrate"
-	"github.com/ogormans-deptstack/kubectl-schemagen/pkg/openapi"
 )
 
 func NewCommand() *cobra.Command {
@@ -35,12 +34,11 @@ resources use outdated API versions and suggests replacements.`,
 }
 
 func runMigrate(files []string, kubeconfig string) error {
-	doc, err := cli.LoadClusterDoc(kubeconfig)
+	available, err := cli.LoadAvailableAPIs(kubeconfig)
 	if err != nil {
 		return err
 	}
 
-	available := buildAvailableAPIs(doc)
 	hasIssues := false
 
 	for _, path := range files {
@@ -72,44 +70,4 @@ func runMigrate(files []string, kubeconfig string) error {
 		return fmt.Errorf("deprecated or removed APIs found")
 	}
 	return nil
-}
-
-func buildAvailableAPIs(doc *openapi.Document) map[string][]string {
-	available := make(map[string][]string)
-	schemas := doc.ComponentSchemas()
-	if schemas == nil {
-		return available
-	}
-
-	seen := make(map[string]map[string]bool)
-	for _, schema := range schemas {
-		schemaMap, ok := schema.(map[string]any)
-		if !ok {
-			continue
-		}
-		ext, ok := schemaMap["x-kubernetes-group-version-kind"]
-		if !ok {
-			continue
-		}
-		arr, ok := ext.([]any)
-		if !ok {
-			continue
-		}
-		for _, item := range arr {
-			m, ok := item.(map[string]any)
-			if !ok {
-				continue
-			}
-			group, _ := m["group"].(string)
-			version, _ := m["version"].(string)
-			if seen[group] == nil {
-				seen[group] = make(map[string]bool)
-			}
-			if !seen[group][version] {
-				seen[group][version] = true
-				available[group] = append(available[group], version)
-			}
-		}
-	}
-	return available
 }
