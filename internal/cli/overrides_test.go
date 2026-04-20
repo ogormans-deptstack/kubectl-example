@@ -4,10 +4,19 @@ import (
 	"testing"
 )
 
+func mustCollect(t *testing.T, opts *ManifestOptions) map[string]string {
+	t.Helper()
+	got, err := CollectOverrides(opts)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	return got
+}
+
 func TestCollectOverrides(t *testing.T) {
 	t.Run("name flag sets name override", func(t *testing.T) {
 		opts := &ManifestOptions{Name: "my-app"}
-		got := CollectOverrides(opts)
+		got := mustCollect(t, opts)
 		if got["name"] != "my-app" {
 			t.Errorf("expected name=my-app, got %q", got["name"])
 		}
@@ -15,7 +24,7 @@ func TestCollectOverrides(t *testing.T) {
 
 	t.Run("image flag sets image override", func(t *testing.T) {
 		opts := &ManifestOptions{Image: "nginx:1.25"}
-		got := CollectOverrides(opts)
+		got := mustCollect(t, opts)
 		if got["image"] != "nginx:1.25" {
 			t.Errorf("expected image=nginx:1.25, got %q", got["image"])
 		}
@@ -23,7 +32,7 @@ func TestCollectOverrides(t *testing.T) {
 
 	t.Run("replicas flag sets replicas override", func(t *testing.T) {
 		opts := &ManifestOptions{Replicas: 3, ReplicasSet: true}
-		got := CollectOverrides(opts)
+		got := mustCollect(t, opts)
 		if got["replicas"] != "3" {
 			t.Errorf("expected replicas=3, got %q", got["replicas"])
 		}
@@ -31,7 +40,7 @@ func TestCollectOverrides(t *testing.T) {
 
 	t.Run("replicas=0 is included in overrides", func(t *testing.T) {
 		opts := &ManifestOptions{Replicas: 0, ReplicasSet: true}
-		got := CollectOverrides(opts)
+		got := mustCollect(t, opts)
 		if v, ok := got["replicas"]; !ok || v != "0" {
 			t.Errorf("expected replicas=0, got %q (present=%v)", v, ok)
 		}
@@ -39,7 +48,7 @@ func TestCollectOverrides(t *testing.T) {
 
 	t.Run("replicas default when flag not set is excluded", func(t *testing.T) {
 		opts := &ManifestOptions{Replicas: 0, ReplicasSet: false}
-		got := CollectOverrides(opts)
+		got := mustCollect(t, opts)
 		if _, ok := got["replicas"]; ok {
 			t.Error("expected replicas to be absent when flag not set")
 		}
@@ -47,23 +56,23 @@ func TestCollectOverrides(t *testing.T) {
 
 	t.Run("set flag with key=value adds override", func(t *testing.T) {
 		opts := &ManifestOptions{Set: []string{"serviceName=my-svc"}}
-		got := CollectOverrides(opts)
+		got := mustCollect(t, opts)
 		if got["serviceName"] != "my-svc" {
 			t.Errorf("expected serviceName=my-svc, got %q", got["serviceName"])
 		}
 	})
 
-	t.Run("set flag without equals is silently ignored", func(t *testing.T) {
+	t.Run("set flag without equals returns error", func(t *testing.T) {
 		opts := &ManifestOptions{Set: []string{"badformat"}}
-		got := CollectOverrides(opts)
-		if len(got) != 0 {
-			t.Errorf("expected empty overrides, got %v", got)
+		_, err := CollectOverrides(opts)
+		if err == nil {
+			t.Error("expected error for --set without equals sign")
 		}
 	})
 
 	t.Run("set flag with value containing equals splits correctly", func(t *testing.T) {
 		opts := &ManifestOptions{Set: []string{"annotation=foo=bar"}}
-		got := CollectOverrides(opts)
+		got := mustCollect(t, opts)
 		if got["annotation"] != "foo=bar" {
 			t.Errorf("expected annotation=foo=bar, got %q", got["annotation"])
 		}
@@ -74,7 +83,7 @@ func TestCollectOverrides(t *testing.T) {
 			Name: "typed-name",
 			Set:  []string{"name=set-name"},
 		}
-		got := CollectOverrides(opts)
+		got := mustCollect(t, opts)
 		if got["name"] != "set-name" {
 			t.Errorf("expected --set to override --name, got %q", got["name"])
 		}
@@ -82,7 +91,7 @@ func TestCollectOverrides(t *testing.T) {
 
 	t.Run("empty name flag is excluded", func(t *testing.T) {
 		opts := &ManifestOptions{Name: ""}
-		got := CollectOverrides(opts)
+		got := mustCollect(t, opts)
 		if _, ok := got["name"]; ok {
 			t.Error("expected empty name to be absent from overrides")
 		}
@@ -90,7 +99,7 @@ func TestCollectOverrides(t *testing.T) {
 
 	t.Run("empty image flag is excluded", func(t *testing.T) {
 		opts := &ManifestOptions{Image: ""}
-		got := CollectOverrides(opts)
+		got := mustCollect(t, opts)
 		if _, ok := got["image"]; ok {
 			t.Error("expected empty image to be absent from overrides")
 		}
@@ -104,7 +113,7 @@ func TestCollectOverrides(t *testing.T) {
 			ReplicasSet: true,
 			Set:         []string{"serviceName=web-svc", "type=ClusterIP"},
 		}
-		got := CollectOverrides(opts)
+		got := mustCollect(t, opts)
 		expected := map[string]string{
 			"name":        "web",
 			"image":       "nginx:latest",
@@ -124,7 +133,7 @@ func TestCollectOverrides(t *testing.T) {
 
 	t.Run("multiple set flags accumulate", func(t *testing.T) {
 		opts := &ManifestOptions{Set: []string{"a=1", "b=2", "c=3"}}
-		got := CollectOverrides(opts)
+		got := mustCollect(t, opts)
 		if len(got) != 3 {
 			t.Errorf("expected 3 overrides, got %d: %v", len(got), got)
 		}
@@ -132,7 +141,7 @@ func TestCollectOverrides(t *testing.T) {
 
 	t.Run("set flag with empty value is valid", func(t *testing.T) {
 		opts := &ManifestOptions{Set: []string{"key="}}
-		got := CollectOverrides(opts)
+		got := mustCollect(t, opts)
 		if v, ok := got["key"]; !ok || v != "" {
 			t.Errorf("expected key with empty value, got %q (present=%v)", v, ok)
 		}

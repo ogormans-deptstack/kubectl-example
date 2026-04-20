@@ -58,6 +58,9 @@ func runManifest(args []string, opts *cli.ManifestOptions, list bool) error {
 		return fmt.Errorf("resource type required. Use --list to see available types")
 	}
 
-	overrides := cli.CollectOverrides(opts)
+	overrides, err := cli.CollectOverrides(opts)
+	if err != nil {
+		return err
+	}
 	return gen.Generate(args[0], overrides, os.Stdout)
 }

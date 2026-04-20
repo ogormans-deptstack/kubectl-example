@@ -17,7 +17,7 @@ type ManifestOptions struct {
 
 // CollectOverrides merges typed flags and --set pairs into a single map.
 // --set values are applied after typed flags and can override them.
-func CollectOverrides(opts *ManifestOptions) map[string]string {
+func CollectOverrides(opts *ManifestOptions) (map[string]string, error) {
 	overrides := make(map[string]string)
 	if opts.Name != "" {
 		overrides["name"] = opts.Name
@@ -30,9 +30,10 @@ func CollectOverrides(opts *ManifestOptions) map[string]string {
 	}
 	for _, s := range opts.Set {
 		parts := strings.SplitN(s, "=", 2)
-		if len(parts) == 2 {
-			overrides[parts[0]] = parts[1]
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("invalid --set value %q: expected KEY=VALUE format", s)
 		}
+		overrides[parts[0]] = parts[1]
 	}
-	return overrides
+	return overrides, nil
 }

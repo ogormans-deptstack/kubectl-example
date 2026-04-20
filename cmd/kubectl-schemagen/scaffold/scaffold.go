@@ -48,7 +48,10 @@ func runScaffold(resourceTypes []string, opts *cli.ManifestOptions, outputDir st
 	}
 
 	gen := generator.NewOpenAPIGenerator(doc)
-	overrides := cli.CollectOverrides(opts)
+	overrides, err := cli.CollectOverrides(opts)
+	if err != nil {
+		return err
+	}
 
 	for _, resourceType := range resourceTypes {
 		var buf bytes.Buffer

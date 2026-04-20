@@ -60,7 +60,11 @@ func runMigrate(files []string, kubeconfig string) error {
 				fmt.Printf(" DEP  %s %s/%s -> %s\n", path, r.Manifest.APIVersion, r.Manifest.Kind, r.Replacement)
 				hasIssues = true
 			case migrate.StatusRemoved:
-				fmt.Printf(" REM  %s %s/%s (no replacement found)\n", path, r.Manifest.APIVersion, r.Manifest.Kind)
+				if r.Replacement != "" {
+					fmt.Printf(" REM  %s %s/%s -> %s\n", path, r.Manifest.APIVersion, r.Manifest.Kind, r.Replacement)
+				} else {
+					fmt.Printf(" REM  %s %s/%s (no replacement found)\n", path, r.Manifest.APIVersion, r.Manifest.Kind)
+				}
 				hasIssues = true
 			}
 		}

@@ -43,6 +43,18 @@ type Result struct {
 	Replacement string
 }
 
+// groupMigrations maps removed API groups to their replacement groups per kind.
+// This covers well-known Kubernetes API group moves that happened across releases.
+var groupMigrations = map[string]map[string]string{
+	"extensions": {
+		"Deployment":    "apps",
+		"ReplicaSet":    "apps",
+		"DaemonSet":     "apps",
+		"Ingress":       "networking.k8s.io",
+		"NetworkPolicy": "networking.k8s.io",
+	},
+}
+
 func ParseManifests(data []byte) ([]Manifest, error) {
 	var manifests []Manifest
 	docs := bytes.Split(data, []byte("\n---"))
@@ -81,10 +93,11 @@ func ParseManifests(data []byte) ([]Manifest, error) {
 func CheckAgainstAvailable(m Manifest, available map[string][]string) Result {
 	versions, groupExists := available[m.Group]
 	if !groupExists {
+		replacement := findCrossGroupReplacement(m, available)
 		return Result{
 			Manifest:    m,
 			Status:      StatusRemoved,
-			Replacement: "",
+			Replacement: replacement,
 		}
 	}
 
@@ -106,10 +119,28 @@ func CheckAgainstAvailable(m Manifest, available map[string][]string) Result {
 		}
 	}
 
+	replacement := findCrossGroupReplacement(m, available)
 	return Result{
-		Manifest: m,
-		Status:   StatusRemoved,
+		Manifest:    m,
+		Status:      StatusRemoved,
+		Replacement: replacement,
 	}
+}
+
+func findCrossGroupReplacement(m Manifest, available map[string][]string) string {
+	kindMap, ok := groupMigrations[m.Group]
+	if !ok {
+		return ""
+	}
+	newGroup, ok := kindMap[m.Kind]
+	if !ok {
+		return ""
+	}
+	versions, groupExists := available[newGroup]
+	if !groupExists || len(versions) == 0 {
+		return ""
+	}
+	return newGroup + "/" + versions[len(versions)-1]
 }
 
 func AnalyzeBytes(data []byte, available map[string][]string) ([]Result, error) {

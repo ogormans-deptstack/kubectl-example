@@ -147,6 +147,20 @@ func TestCheckDeprecations(t *testing.T) {
 		if result.Status != StatusRemoved {
 			t.Errorf("expected StatusRemoved, got %v", result.Status)
 		}
+		if result.Replacement != "apps/v1" {
+			t.Errorf("expected replacement apps/v1, got %q", result.Replacement)
+		}
+	})
+
+	t.Run("removed extensions Ingress suggests networking.k8s.io", func(t *testing.T) {
+		m := Manifest{APIVersion: "extensions/v1beta1", Kind: "Ingress", Group: "extensions", Version: "v1beta1"}
+		result := CheckAgainstAvailable(m, available)
+		if result.Status != StatusRemoved {
+			t.Errorf("expected StatusRemoved, got %v", result.Status)
+		}
+		if result.Replacement != "networking.k8s.io/v1" {
+			t.Errorf("expected replacement networking.k8s.io/v1, got %q", result.Replacement)
+		}
 	})
 
 	t.Run("unknown group is flagged as removed", func(t *testing.T) {
@@ -206,6 +220,9 @@ metadata:
 		}
 		if results[1].Status != StatusRemoved {
 			t.Errorf("extensions/v1beta1 Deployment should be Removed, got %v", results[1].Status)
+		}
+		if results[1].Replacement != "apps/v1" {
+			t.Errorf("expected replacement apps/v1, got %q", results[1].Replacement)
 		}
 	})
 }

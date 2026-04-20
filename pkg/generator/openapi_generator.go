@@ -111,11 +111,13 @@ func (g *OpenAPIGenerator) buildManifest(gvk openapi.GVK, schema map[string]any)
 		name = override
 	}
 
-	labels := map[string]string{"app.kubernetes.io/name": name}
-	manifest.set("metadata", map[string]any{
+	labels := map[string]any{"app.kubernetes.io/name": name}
+	metadata := map[string]any{
 		"name":   name,
 		"labels": labels,
-	})
+	}
+	g.applyMetadataOverrides(metadata)
+	manifest.set("metadata", metadata)
 
 	props, err := openapi.SchemaProperties(g.doc.Raw(), schema)
 	if err != nil || props == nil {
@@ -390,13 +392,41 @@ func (g *OpenAPIGenerator) applyOverrides(spec map[string]any, kind string) {
 		case "name":
 			continue
 		case "replicas":
-			spec["replicas"] = parseIntOrString(v)
+			if _, hasReplicas := spec["replicas"]; hasReplicas {
+				spec["replicas"] = parseIntOrString(v)
+			}
 		case "image":
 			g.setContainerImage(spec, v)
 		default:
+			if strings.HasPrefix(k, "metadata.") {
+				continue
+			}
 			if strings.Contains(k, ".") {
 				g.setNestedField(spec, k, v)
 			}
+		}
+	}
+}
+
+func (g *OpenAPIGenerator) applyMetadataOverrides(metadata map[string]any) {
+	for k, v := range g.overrides {
+		if !strings.HasPrefix(k, "metadata.") {
+			continue
+		}
+		path := strings.TrimPrefix(k, "metadata.")
+		parts := strings.Split(path, ".")
+		current := metadata
+		for i, part := range parts {
+			if i == len(parts)-1 {
+				current[part] = parseIntOrString(v)
+				break
+			}
+			next, ok := current[part].(map[string]any)
+			if !ok {
+				next = make(map[string]any)
+				current[part] = next
+			}
+			current = next
 		}
 	}
 }
